@@ -5,6 +5,7 @@ devAuth = "1.2.1"
 shadow = "9.0.0-beta15"
 minotaur = "2.+"
 manifold_plugin = "0.0.2-alpha"
+blossom ="2.1.0"
 
 [libraries]
 devauth-fabric = { module = "me.djtheredstoner:DevAuth-fabric", version.ref = "devAuth" }
@@ -16,4 +17,4 @@ slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
 manifold = { id = "systems.manifold.manifold-gradle-plugin", version.ref = "manifold_plugin" }
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
 minotaur = { id = "com.modrinth.minotaur", version.ref = "minotaur" }
-
+blossom = { id = "net.kyori.blossom", version.ref = "blossom" }

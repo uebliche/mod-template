@@ -1,5 +1,6 @@
 // build.main.gradle
 import groovy.json.JsonSlurper
+import org.apache.tools.ant.filters.ReplaceTokens
 
 import java.io.ByteArrayOutputStream
 
@@ -164,6 +165,24 @@ dependencies {
 
 repositories {
     maven { url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1" }
+}
+
+
+sourceSets {
+    main {
+        java {
+            srcDir(file("src/main/java"))
+        }
+        blossom {
+            javaSources {
+                property("COMMIT", System.getenv("GITHUB_SHA") ?: "LOCAL")
+                property("BRANCH", System.getenv("GITHUB_REF") ?: "LOCAL")
+                property("GROUP", project.group.toString())
+                property("ARTIFACT", project.name)
+                property("VERSION", project.version.toString())
+            }
+        }
+    }
 }
 
 def libs = project.extensions.findByType(VersionCatalogsExtension).named("libs")
