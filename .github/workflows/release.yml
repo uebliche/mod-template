@@ -81,7 +81,7 @@ jobs:
           echo "DEBUG: FINAL_VERSIONS=$FINAL_VERSIONS"  # Debug output
 
   build:
-    needs: generate-matrix
+    needs: [generate-matrix, release]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
