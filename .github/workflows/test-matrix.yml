@@ -50,7 +50,7 @@ jobs:
         run: ./gradlew build -Pminecraft_version=${{ matrix.mc_version }}
 
   update-readme-badges:
-    needs: test
+    needs: [test, generate-matrix]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push' && always()
     permissions:
