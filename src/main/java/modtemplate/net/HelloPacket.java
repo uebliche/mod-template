@@ -23,12 +23,10 @@ public record HelloPacket(
 
     #if MC_VER >= MC_1_21
     public static final Type<HelloPacket> ID = new Type<>(ResourceLocation.parse("template:hello"));
-    #else
-        #if MC_VER >= MC_1_20_5
+    #elif MC_VER >= MC_1_20_5
     public static final Type<HelloPacket> ID = new Type<>(ResourceLocation.tryParse("template:hello"));
-        #else
+    #else
     public static final ResourceLocation ID = new ResourceLocation("template", "hello");
-        #endif
     #endif
 
     #if MC_VER >= MC_1_20_5
