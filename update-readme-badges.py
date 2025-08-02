@@ -45,11 +45,11 @@ def get_status(version):
             return job["conclusion"]
     return "skipped"
 
-BADGES = "| Minecraft Version | Status |\n|-------------------|--------|\n"
+BADGES = ""
 for v in versions:
     status = get_status(v)
     color = "brightgreen" if status == "success" else ("red" if status == "failure" else "lightgrey")
-    BADGES += f"| {v} | ![Test {v}](https://img.shields.io/badge/{v}-{status}-{color}?style=flat) |\n"
+    BADGES += f"![Test {v}](https://img.shields.io/badge/{v}-{status}-{color}?style=flat) "
 
 # README ersetzen
 with open(README, encoding="utf-8") as f:
@@ -60,7 +60,7 @@ with open(README + ".tmp", "w", encoding="utf-8") as f:
     for line in lines:
         if START_MARKER in line:
             f.write(line)
-            f.write(BADGES)
+            f.write(BADGES + "\n")
             inblock = True
             continue
         if END_MARKER in line:
@@ -69,4 +69,3 @@ with open(README + ".tmp", "w", encoding="utf-8") as f:
             f.write(line)
 
 os.replace(README + ".tmp", README)
-
