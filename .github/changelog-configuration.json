@@ -1,0 +1,26 @@
+{
+  "template": "## Changelog\n\n{{#commits}}\n- {{messageTitle}} ({{author}})\n{{/commits}}\n\n{{#issues}}\n- {{#if isPullRequest}}PR #{{id}}: {{title}}{{else}}Issue #{{id}}: {{title}}{{/if}} ({{author}})\n{{/issues}}\n\n---\n\n**Full commit log:**\n{{#commits}}\n- {{hash}}: {{messageTitle}} ({{author}})\n{{/commits}}\n",
+  "categories": [
+    {
+      "title": "🚀 Features",
+      "labels": ["feature", "enhancement"]
+    },
+    {
+      "title": "🐛 Bug Fixes",
+      "labels": ["bug", "fix"]
+    },
+    {
+      "title": "🧰 Maintenance",
+      "labels": ["chore", "maintenance", "refactor"]
+    },
+    {
+      "title": "📚 Documentation",
+      "labels": ["documentation", "docs"]
+    }
+  ],
+  "sort": {
+    "commits": "date-desc"
+  },
+  "pr_template": "- {{title}} (#{{id}} by @{{author}})"
+}
+
