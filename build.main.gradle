@@ -284,7 +284,7 @@ processResources {
                 "version"             : version,
                 "mod_id"              : project.hasProperty("mod_id") ? project.mod_id : project.name.toLowerCase(),
                 "mod_name"            : project.hasProperty("mod_name") ? project.mod_name : project.name.tokenize(' _-').collect { it.capitalize() }.join(' '),
-                "mod_description"     : project.hasProperty("mod_description") ? project.mod_description : "",
+                "description"         : project.hasProperty("description") ? project.description : "",
                 "icon_path"           : project.hasProperty("icon_path") ? project.icon_path : "assets/${project.name}/icon.png",
                 "minecraft_version"   : project.hasProperty("minecraft_version") ? project.minecraft_version : "",
                 "fabricloader_version": project.hasProperty("loader_version") ? project.loader_version : "",
