@@ -5,7 +5,6 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 #else
-
 import net.minecraft.network.FriendlyByteBuf;
 #endif
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
