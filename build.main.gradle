@@ -297,6 +297,13 @@ processResources {
                 "entrypoints"         : entrypoints ? groovy.json.JsonOutput.toJson(entrypoints) : "{}"
         ])
     }
+
+    // Dynamically set compatibilityLevel in mod-template.mixins.json based on effectiveJavaVersion
+    filesMatching("mod-template.mixins.json") {
+        expand([
+            "compatibilityLevel": "JAVA_${effectiveJavaVersion.majorVersion}"
+        ])
+    }
 }
 
 // Nach processResources Task: fabric.mod.json ausgeben
