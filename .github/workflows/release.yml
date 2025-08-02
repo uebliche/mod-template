@@ -68,6 +68,8 @@ jobs:
           fromTag: ${{ steps.prevtag.outputs.previous_tag }}
           toTag: ${{ steps.tag.outputs.TAG }}
           fetchViaCommits: true
+          exportOnly: false
+          commitMode: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

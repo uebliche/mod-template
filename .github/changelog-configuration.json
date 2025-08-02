@@ -1,5 +1,6 @@
 {
   "template": "## Changelog\n\n{{#commits}}\n- {{messageTitle}} ({{author}})\n{{/commits}}\n\n{{#issues}}\n- {{#if isPullRequest}}PR #{{id}}: {{title}}{{else}}Issue #{{id}}: {{title}}{{/if}} ({{author}})\n{{/issues}}\n\n---\n\n**Full commit log:**\n{{#commits}}\n- {{hash}}: {{messageTitle}} ({{author}})\n{{/commits}}\n",
+  "commit": "- {{messageTitle}} ({{author}})",
   "categories": [
     {
       "title": "🚀 Features",
