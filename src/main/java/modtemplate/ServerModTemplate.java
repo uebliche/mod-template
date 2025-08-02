@@ -5,7 +5,6 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 
 #if MC_VER >= MC_1_20_5
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 #endif
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import org.slf4j.Logger;
