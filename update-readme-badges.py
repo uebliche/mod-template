@@ -46,7 +46,7 @@ def get_status(version):
     return "skipped"
 
 BADGES = ""
-for v in versions:
+for v in reversed(versions):
     status = get_status(v)
     color = "brightgreen" if status == "success" else ("red" if status == "failure" else "lightgrey")
     BADGES += f"![Test {v}](https://img.shields.io/badge/{v}-{status}-{color}?style=flat) "
