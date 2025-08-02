@@ -43,11 +43,19 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Version: ${VERSION}" >> $GITHUB_STEP_SUMMARY
 
+      - name: Get previous tag
+        id: prevtag
+        run: |
+          PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${{ steps.tag.outputs.TAG }}$" | head -n1)
+          echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
+
       - name: Generate changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
         with:
           configuration: '.github/changelog-configuration.json'
+          fromTag: ${{ steps.prevtag.outputs.previous_tag }}
+          toTag: ${{ steps.tag.outputs.TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

@@ -1,10 +1,8 @@
 // build.main.gradle
 
+
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
-import org.apache.tools.ant.filters.ReplaceTokens
-
-import java.io.ByteArrayOutputStream
 
 ext.cachedJdList = null
 
@@ -298,7 +296,7 @@ processResources {
     // Dynamically set compatibilityLevel in mod-template.mixins.json based on effectiveJavaVersion
     filesMatching("mod-template.mixins.json") {
         expand([
-            "compatibilityLevel": "JAVA_${effectiveJavaVersion.majorVersion}"
+                "compatibilityLevel": "JAVA_${effectiveJavaVersion.majorVersion}"
         ])
     }
 }
