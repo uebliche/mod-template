@@ -16,20 +16,19 @@ jobs:
           DATE=$(date +'%Y.%m.%d')
           TAG=$DATE
           LETTER=a
-          # Get all tags starting with today's date
           EXISTING=$(git tag --list "$DATE*")
           if [[ -n "$EXISTING" ]]; then
-            # Find the next available letter
-            while echo "$EXISTING" | grep -q "^$TAG$"; do
-              TAG="${DATE}${LETTER}"
-              LETTER=$(echo "$LETTER" | tr "0-9a-y" "1-9a-z")
-            done
+          while echo "$EXISTING" | grep -q "^$TAG$"; do
+          TAG="${DATE}${LETTER}"
+          LETTER=$(echo "$LETTER" | tr "0-9a-y" "1-9a-z")
+          done
           fi
           echo "Using tag: $TAG"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$TAG"
           git push origin "$TAG"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
 
       - name: Generate changelog
         id: changelog
