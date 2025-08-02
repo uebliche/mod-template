@@ -170,9 +170,6 @@ repositories {
 
 sourceSets {
     main {
-        java {
-            srcDir(file("src/main/java"))
-        }
         blossom {
             javaSources {
                 property("COMMIT", System.getenv("GITHUB_SHA") ?: "LOCAL")
