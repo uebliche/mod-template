@@ -16,6 +16,6 @@ public class ExampleMixin {
 
     @Inject(at = @At("TAIL"), method = "init")
     private static void init(CallbackInfo info) {
-        LOGGER.info("Code für Minecraft 1.21.7");
+        LOGGER.info("Mod Template mixin initialized!");
     }
 }
