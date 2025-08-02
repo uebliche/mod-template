@@ -6,7 +6,7 @@ import json
 README = "README.md"
 START_MARKER = "<!-- build_test.start -->"
 END_MARKER = "<!-- build_test.end -->"
-REPO = os.environ.get("GITHUB_REPOSITORY", "uebliche/mod-template")
+REPO = os.environ.get("GITHUB_REPOSITORY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
 if len(sys.argv) < 2:
