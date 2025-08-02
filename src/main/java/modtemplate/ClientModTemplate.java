@@ -14,6 +14,6 @@ public class ClientModTemplate implements ClientModInitializer {
 	public void onInitializeClient() {
 		LOGGER.info("Hello Fabric world!");
 
-		LOGGER.info("BuildInfo: version={}, group={}, artifact={}, commit={}, branch={}", BuildInfo.version(), BuildInfo.group(), BuildInfo.artifact(), BuildInfo.commit(), BuildInfo.branch());
+		LOGGER.info("BuildInfo: version={}, group={}, artifact={}, commit={}, branch={}, targetMCVersion={}", BuildInfo.version(), BuildInfo.group(), BuildInfo.artifact(), BuildInfo.commit(), BuildInfo.branch(), BuildInfo.mcVersion());
 	}
 }
