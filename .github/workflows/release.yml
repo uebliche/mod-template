@@ -48,7 +48,18 @@ jobs:
         run: |
           PREV_TAG=$(git tag --sort=-creatordate | grep -v "^${{ steps.tag.outputs.TAG }}$" | head -n1)
           echo "previous_tag=$PREV_TAG" >> $GITHUB_OUTPUT
-
+          echo "Previous tag: ${PREV_TAG}" >> $GITHUB_STEP_SUMMARY
+      - name: Show recent commits and tags
+        run: |
+          echo "Tags (sorted by creation date):"
+          git tag --sort=-creatordate
+          echo ""
+          echo "Last 20 commits (with tags and branches):"
+          git log --oneline --decorate --graph -20
+      - name: Debug Tags and Commits
+        run: |
+          git tag --sort=-creatordate
+          git log --oneline --decorate --graph -20
       - name: Generate changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
