@@ -1,10 +1,17 @@
 package modtemplate;
 
+import modtemplate.net.HelloPacket;
 import net.fabricmc.api.ClientModInitializer;
 #if MC_VER >= MC_1_20_5
-import modtemplate.net.HelloPacket;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 #endif
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PacketType;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.FriendlyByteBuf;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,8 +29,25 @@ public class ClientModTemplate implements ClientModInitializer {
         #if MC_VER >= MC_1_20_5
         PayloadTypeRegistry.playC2S().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
-        #else
+        ClientPlayNetworking.registerGlobalReceiver(HelloPacket.ID, (packet, context) -> {
+            LOGGER.info("Received message from server: {}", packet.message());
+        });
 
+        ClientPlayConnectionEvents.JOIN.register((clientPacketListener, packetSender, minecraft) -> {
+            ClientPlayNetworking.send(new HelloPacket("Hello from the client!"));
+        });
+        #else
+        ClientPlayNetworking.registerGlobalReceiver(HelloPacket.ID, (minecraftClient, clientPlayNetworkHandler, friendlyByteBuf, packetSender) -> {
+            HelloPacket helloPacket = new HelloPacket(friendlyByteBuf.readUtf());
+            LOGGER.info("Received message from server: {}", helloPacket.message());
+        });
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            FriendlyByteBuf buffer = PacketByteBufs.create();
+            buffer.writeUtf("Hello from the client!");
+            ClientPlayNetworking.send(HelloPacket.ID, buffer);
+            LOGGER.info("Sent hello message to server.");
+        });
         #endif
     }
 }
