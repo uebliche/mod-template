@@ -345,12 +345,36 @@ remapJar {
     archiveFileName = "${project.archives_base_name}-${version}.jar"
 }
 
-def changelog = {
-    def proc = ['git', 'log', '--pretty=format:- %s', '--no-merges', '-n', '10'].execute()
-    proc.waitFor()
-    def output = proc.in.text.trim()
-    return output ?: "No recent changes."
-}()
+def getChangelogSinceLastTag = {
+    def stdout = new ByteArrayOutputStream()
+    def lastTag = 'HEAD'
+
+    try {
+        def tagOut = new ByteArrayOutputStream()
+        exec {
+            commandLine 'git', 'describe', '--tags', '--abbrev=0'
+            standardOutput = tagOut
+            ignoreExitValue = true
+        }
+        lastTag = tagOut.toString('UTF-8').trim()
+    } catch (ignored) {
+    }
+
+    exec {
+        commandLine 'git', 'log', "${lastTag}..HEAD", '--pretty=format:- %s', '--no-merges'
+        standardOutput = stdout
+        ignoreExitValue = true
+    }
+
+    def output = stdout.toString('UTF-8').trim()
+    return output ?: "No changes since last tag."
+}
+
+tasks.register("printChangelog") {
+    doLast {
+        println "🔄 Changes since last tag:\n${getChangelogSinceLastTag()}"
+    }
+}
 
 modrinth {
     syncBodyFrom = rootProject.file("README.md").text
@@ -365,7 +389,7 @@ modrinth {
     dependencies {
         required.project "fabric-api"
     }
-    changelog = "🔄 Changes:\n${changelog}"
+    changelog = "🔄 Changes:\n${getChangelogSinceLastTag()}"
 }
 
 task updateAuthors {
