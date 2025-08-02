@@ -59,12 +59,17 @@ jobs:
       - uses: actions/checkout@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Install jq
-        run: sudo apt-get install jq
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+      - name: Install requests
+        run: pip install requests
       - name: Update README badges
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          chmod +x ./update-readme-badges.sh
-          ./update-readme-badges.sh '${{ needs.generate-matrix.outputs.matrix }}'
+          python3 update-readme-badges.py '${{ needs.generate-matrix.outputs.matrix }}'
       - name: Commit and push README update
         run: |
           git config user.name "github-actions[bot]"
