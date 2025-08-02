@@ -48,8 +48,15 @@ tasks.register('generatePreprocessorDefinitions') {
         def mcVersion = project.minecraft_version
         def parsed = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/game"))
         def versions = parsed.findAll { it.stable }*.version.sort { a, b ->
-            def norm = { it.tokenize('.').collect { it.padLeft(2, '0') }.join('').toInteger() }
-            norm(a) <=> norm(b)
+            def parse = { it.tokenize('.').collect { it as int } }
+            def pa = parse(a)
+            def pb = parse(b)
+            for (int i = 0; i < Math.max(pa.size(), pb.size()); i++) {
+                def va = i < pa.size() ? pa[i] : 0
+                def vb = i < pb.size() ? pb[i] : 0
+                if (va != vb) return va <=> vb
+            }
+            return 0
         }
         def index = versions.indexOf(mcVersion)
         if (index == -1) throw new GradleException("❌ Minecraft version ${mcVersion} is not a known Fabric release.")
