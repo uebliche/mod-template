@@ -40,3 +40,4 @@ replay_*.log
 *.jfr
 /jdlist.txt
 /versions.json
+/build.properties
