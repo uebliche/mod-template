@@ -67,6 +67,7 @@ jobs:
           configuration: '.github/changelog-configuration.json'
           fromTag: ${{ steps.prevtag.outputs.previous_tag }}
           toTag: ${{ steps.tag.outputs.TAG }}
+          fetchViaCommits: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
