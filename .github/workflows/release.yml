@@ -7,6 +7,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    outputs:
+      TAG: ${{ steps.tag.outputs.TAG }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
@@ -96,19 +98,19 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build
-        run: ./gradlew build remapJar -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG || env.TAG }}
+        run: ./gradlew build remapJar -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }}
       - name: Upload remapped jar to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ needs.release.outputs.TAG || env.TAG }}
-          files: build/libs/${{ env.ARCHIVES_BASE_NAME }}-${{ needs.release.outputs.TAG || env.TAG }}-*.jar
+          tag_name: ${{ needs.release.outputs.TAG }}
+          files: build/libs/${{ env.ARCHIVES_BASE_NAME }}-${{ needs.release.outputs.TAG }}-*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
-        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG || env.TAG }}
+        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }}
 
   update-description:
     runs-on: ubuntu-latest
