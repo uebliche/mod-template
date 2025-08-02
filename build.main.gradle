@@ -70,6 +70,7 @@ tasks.named("compileJava") { dependsOn generatePreprocessorDefinitions }
 
 // -------------------- MANIFOLD COMPILER ARGS --------------------
 tasks.withType(JavaCompile).configureEach {
+    println "🔧 Configuring JavaCompile task for Manifold and Minecraft versions..."
     // Read MC version macros from build.properties and add as compiler arguments
     def propsFile = file("build.properties")
     def macroArgs = []
@@ -83,13 +84,13 @@ tasks.withType(JavaCompile).configureEach {
     // Set compiler arguments for Manifold and Minecraft versions
     def mcVer = project.minecraft_version
     def versionInt = mcVer.tokenize('.').collect { it.padLeft(2, '0') }.join('').toInteger()
+    println "🔧 Setting Manifold compiler arguments for Minecraft version ${mcVer} (int: ${versionInt})"
     options.compilerArgs += [
             "-Xplugin:Manifold",
-            "-AMC_VER=${versionInt}",
-            // "-AMC_VER_INT=${versionInt}",
             "-Xlint:unchecked",
             "-Xlint:deprecation"
     ] + macroArgs
+    println "🔧 Compiler arguments: ${options.compilerArgs.join(' ')}"
     // Set the Java release version according to the effective Minecraft version
     options.release = Integer.parseInt(effectiveJavaVersion.majorVersion)
 }
