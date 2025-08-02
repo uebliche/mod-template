@@ -180,6 +180,7 @@ sourceSets {
                 property("GROUP", project.group.toString())
                 property("ARTIFACT", project.name)
                 property("VERSION", project.version.toString())
+                property("MC_VERSION", project.minecraft_version)
             }
         }
     }
