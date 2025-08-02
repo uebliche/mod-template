@@ -69,7 +69,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          python3 update-readme-badges.py '${{ needs.generate-matrix.outputs.matrix }}'
+          python3 ./github/update-readme-badges.py '${{ needs.generate-matrix.outputs.matrix }}'
       - name: Commit and push README update
         run: |
           git config user.name "github-actions[bot]"
