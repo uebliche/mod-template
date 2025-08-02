@@ -67,38 +67,26 @@ tasks.named("compileJava") { dependsOn generatePreprocessorDefinitions }
 
 // -------------------- MANIFOLD COMPILER ARGS --------------------
 tasks.withType(JavaCompile).configureEach {
+    // Read MC version macros from build.properties and add as compiler arguments
+    def propsFile = file("build.properties")
+    def macroArgs = []
+    if (propsFile.exists()) {
+        def props = new Properties()
+        propsFile.withInputStream { props.load(it) }
+        props.each { k, v ->
+            macroArgs += "-A${k}=${v}"
+        }
+    }
     // Set compiler arguments for Manifold and Minecraft versions
     def mcVer = project.minecraft_version
     def versionInt = mcVer.tokenize('.').collect { it.padLeft(2, '0') }.join('').toInteger()
-
-    // Fetch all stable Minecraft versions from Fabric meta API
-    def parsed = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/game"))
-    def versions = parsed.findAll { it.stable }*.version
-
-    // Helper to convert version string to integer for comparison
-    def toInt = { version ->
-        def parts = version.tokenize('.')
-        while (parts.size() < 3) parts += '0'
-        def padded = parts.collect { it.toString().padLeft(2, '0') }
-        return padded.join('').toInteger()
-    }
-    // Generate macro definitions for all stable versions
-    // Each macro is used for conditional compilation depending on Minecraft version
-    def defines = versions.collect { ver ->
-        def versionMacro = "MC_" + ver.replace('.', '_')
-        def intVal = toInt(ver)
-        return "-A${versionMacro}=${intVal}"
-    }
-
-    // Add all compiler arguments for Manifold and Minecraft version macros
     options.compilerArgs += [
             "-Xplugin:Manifold",
             "-AMC_VER=${versionInt}",
             // "-AMC_VER_INT=${versionInt}",
             "-Xlint:unchecked",
             "-Xlint:deprecation"
-    ] + defines
-
+    ] + macroArgs
     // Set the Java release version according to the effective Minecraft version
     options.release = Integer.parseInt(effectiveJavaVersion.majorVersion)
 }

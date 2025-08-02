@@ -8,10 +8,10 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 #else
 import net.fabricmc.fabric.api.networking.v1.PacketType;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
-#endif
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
+#endif
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,6 +29,7 @@ public class ClientModTemplate implements ClientModInitializer {
         #if MC_VER >= MC_1_20_5
         PayloadTypeRegistry.playC2S().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
+
         ClientPlayNetworking.registerGlobalReceiver(HelloPacket.ID, (packet, context) -> {
             LOGGER.info("Received message from server: {}", packet.message());
         });
