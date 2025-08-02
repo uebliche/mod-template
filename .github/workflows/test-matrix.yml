@@ -75,8 +75,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "Update README badges [skip ci]" || echo "No changes to commit"
+          git commit -m "docs(README): Update tested Minecraft version badges [skip ci]" || echo "No changes to commit
           git push
-      - name: Always succeed
-        if: always()
-        run: echo "Force job success"
