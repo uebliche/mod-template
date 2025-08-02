@@ -11,23 +11,24 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Create date-based tag
+      - name: Create unique tag for release
         id: tag
         run: |
           DATE=$(date +'%Y.%m.%d')
-          TAG=$DATE
-          LETTER=a
-          EXISTING=$(git tag --list "$DATE*")
-          if [[ -n "$EXISTING" ]]; then
-          while echo "$EXISTING" | grep -q "^$TAG$"; do
-          TAG="${DATE}${LETTER}"
-          LETTER=$(echo "$LETTER" | tr "0-9a-y" "1-9a-z")
+          TAG="$DATE"
+          SUFFIX=""
+          LETTERS=(a b c d e f g h i j k l m n o p q r s t u v w x y z)
+          i=0
+          while git ls-remote --tags origin | grep -q "refs/tags/$TAG$SUFFIX$"; do
+            SUFFIX="${LETTERS[$i]}"
+            ((i++))
           done
-          fi 
-          git tag $TAG
-          git push origin $TAG
-          echo "Using tag: $TAG"
-          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          TAG="$TAG$SUFFIX"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "TAG=$TAG" >> $GITHUB_ENV
 
       - name: Generate changelog
         id: changelog
