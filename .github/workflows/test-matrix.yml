@@ -49,3 +49,24 @@ jobs:
       - name: Test Build
         run: ./gradlew build -Pminecraft_version=${{ matrix.mc_version }}
 
+  update-readme-badges:
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install jq
+        run: sudo apt-get install jq
+      - name: Update README badges
+        run: |
+          chmod +x ./update-readme-badges.sh
+          ./update-readme-badges.sh '${{ needs.generate-matrix.outputs.matrix }}'
+      - name: Commit and push README update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "Update README badges [skip ci]" || echo "No changes to commit"
+          git push
