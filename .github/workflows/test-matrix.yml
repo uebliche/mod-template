@@ -1,0 +1,51 @@
+name: Test All Minecraft Versions
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  generate-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Parse Versions
+        id: set-matrix
+        run: |
+          MIN_VERSION=$(grep '^buildFromVersion=' gradle.properties | cut -d'=' -f2)
+          curl -s https://meta.fabricmc.net/v2/versions/game > versions.json
+          curl -s https://maven.fabricmc.net/jdlist.txt > jdlist.txt
+          VERSIONS=$(jq -r '.[] | select(.stable == true) | .version' versions.json | sort -V | awk -v min="$MIN_VERSION" '{ if ($1 >= min) print $1 }')
+          FABRIC_API_MC_VERSIONS=$(grep -oP 'fabric-api-[^+]+?\+\K[0-9]+\.[0-9]+(\.[0-9]+)?' jdlist.txt | sort -V | uniq)
+          FINAL_VERSIONS=$(comm -12 <(echo "$VERSIONS") <(echo "$FABRIC_API_MC_VERSIONS") | jq -R -s -c 'split("\n")[:-1]')
+          echo "matrix=$FINAL_VERSIONS" >> $GITHUB_OUTPUT
+          echo "DEBUG: VERSIONS=$VERSIONS"  # Debug output
+          echo "DEBUG: FABRIC_API_MC_VERSIONS=$FABRIC_API_MC_VERSIONS"  # Debug output
+          echo "DEBUG: FINAL_VERSIONS=$FINAL_VERSIONS"  # Debug output
+
+  test:
+    needs: generate-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mc_version: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    name: Test ${{ matrix.mc_version }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+      - name: Test Build
+        run: ./gradlew build -Pminecraft_version=${{ matrix.mc_version }}
+
