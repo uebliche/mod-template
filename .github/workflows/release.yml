@@ -68,8 +68,8 @@ jobs:
           fromTag: ${{ steps.prevtag.outputs.previous_tag }}
           toTag: ${{ steps.tag.outputs.TAG }}
           fetchViaCommits: true
-          exportOnly: false
-          commitMode: true
+          commitMode: false
+          exportOnly: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -79,7 +79,7 @@ jobs:
           tag_name: ${{ steps.tag.outputs.TAG }}
           name: Release ${{ steps.tag.outputs.TAG }}
           body: ${{ steps.changelog.outputs.changelog }}
-          generate_release_notes: true
+          generate_release_notes: false
 
   generate-matrix:
     runs-on: ubuntu-latest
