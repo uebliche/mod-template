@@ -1,4 +1,6 @@
 // build.main.gradle
+
+import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import org.apache.tools.ant.filters.ReplaceTokens
 
@@ -215,7 +217,7 @@ processResources {
     authors.sort()
 
     // Serialize authors array as JSON string for safe insertion
-    def authorsJson = groovy.json.JsonOutput.toJson(authors)
+    def authorsJson = JsonOutput.toJson(authors)
 
     // Initialize contact as empty map, not closure!
     def contact = [:]
@@ -228,7 +230,7 @@ processResources {
     if (project.hasProperty("discord"))
         contact["discord"] = project.discord
 
-    def contactJson = groovy.json.JsonOutput.toJson(contact)
+    def contactJson = JsonOutput.toJson(contact)
     println "📜 Authors: ${authors.size()} unique contributors found."
     println "📞 Contact info: ${contactJson}"
 
@@ -246,7 +248,7 @@ processResources {
 
     custom["modmenu"] = modmenu
 
-    def customJson = groovy.json.JsonOutput.toJson(custom)
+    def customJson = JsonOutput.toJson(custom)
     println "🔧 Custom data: ${customJson}"
 
     def entrypoints = [:]
@@ -265,6 +267,8 @@ processResources {
         entrypoints["common"] = commonEntrypoints
         println "🌐 Common entrypoint: ${project.common_main_class}"
     }
+    def entrypointsJson = JsonOutput.toJson(entrypoints)
+
 
     def enviroment = "*"
     if (project.hasProperty("client_main_class") && project.hasProperty("server_main_class")) {
@@ -292,7 +296,7 @@ processResources {
                 "custom"              : customJson, // Insert custom data as JSON object string
                 "java_version"        : effectiveJavaVersion.majorVersion,
                 "environment"         : project.hasProperty("environment") ? project.environment : enviroment,
-                "entrypoints"         : entrypoints ? groovy.json.JsonOutput.toJson(entrypoints) : "{}"
+                "entrypoints"         : entrypointsJson
         ])
     }
 
@@ -348,73 +352,12 @@ remapJar {
     archiveFileName = "${project.archives_base_name}-${version}.jar"
 }
 
-tasks.register('buildAllVersions') {
-    doLast {
-        def minVersion = project.hasProperty("buildFromVersion") ? project.buildFromVersion : "1.0.0"
-        def minInt = parseVersion(minVersion)
-
-        def jdList = project.ext.cachedJdList ?: new URL("https://maven.fabricmc.net/jdlist.txt").text.readLines()
-        project.ext.cachedJdList = jdList
-
-        def rawVersions = new JsonSlurper()
-                .parse(new URL("https://meta.fabricmc.net/v2/versions/game"))
-                .findAll { it.stable }
-                .collect { it.version }
-                .findAll { ver ->
-                    def versionInt = parseVersion(ver)
-                    return versionInt >= parseVersion(minVersion) &&
-                            jdList.any { it.startsWith("fabric-api-") && it.endsWith("+${ver}") }
-                }
-                .sort { -parseVersion(it) }
-
-
-        def filtered = rawVersions.findAll { parseVersion(it) >= minInt }
-                .sort { -parseVersion(it) }
-
-        println "🚀 Building for the following Minecraft versions (>= ${minVersion}) in descending order:"
-        filtered.each { println " - ${it}" }
-
-        def outputDir = new File(project.projectDir, "out")
-        outputDir.mkdirs()
-
-        // Iterate over all filtered Minecraft versions and build for each
-        filtered.each { mcVer ->
-            println "\n⚙️ Building for $mcVer..."
-            def result = exec {
-                workingDir = project.projectDir
-                environment "minecraft_version", mcVer
-                commandLine gradleCommand, "clean", "build", "shadowJar", "-Pminecraft_version=$mcVer"
-                ignoreExitValue = true
-            }
-            if (result.exitValue != 0) {
-                println "❌ Error building for ${mcVer}, skipping..."
-                return
-            }
-
-            // Input file: mod-template-<version>-all-remapped.jar
-            def fromName = "${archives_base_name}-${version}.jar"
-            def sourceFile = file("build/libs/${fromName}")
-            def targetName = "${archives_base_name}-${mcVer}+${version}.jar"
-            def targetFile = new File(outputDir, targetName)
-
-            if (sourceFile.exists()) {
-                println "📤 Copying ${fromName} → ${targetName}"
-                sourceFile.renameTo(targetFile)
-            } else {
-                println "⚠️ ${fromName} not found – build might be empty."
-            }
-        }
-
-        println "\n✅ All shadow builds saved under: ${outputDir.absolutePath}"
-    }
-}
-
-def generateChangelog = {
+def changelog = {
     def proc = ['git', 'log', '--pretty=format:- %s', '--no-merges', '-n', '10'].execute()
     proc.waitFor()
     def output = proc.in.text.trim()
     return output ?: "No recent changes."
-}
+}()
 
 modrinth {
     syncBodyFrom = rootProject.file("README.md").text
@@ -429,7 +372,7 @@ modrinth {
     dependencies {
         required.project "fabric-api"
     }
-    changelog = "🔄 Changes:\n${generateChangelog()}"
+    changelog = "🔄 Changes:\n${changelog}"
 }
 
 task updateAuthors {
