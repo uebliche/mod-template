@@ -27,14 +27,7 @@ def generateMcVersionMacros(List<String> versions, int selectedIndex) {
     println "Selected version: ${versions[selectedIndex]} (index ${selectedIndex})"
     println "Java version for Minecraft ${project.minecraft_version}: ${getJavaVersionForMinecraft(project.minecraft_version).majorVersion}"
     println "Build properties file written to: ${new File(project.projectDir, "build.properties").absolutePath}"
-    def propsFile = file("build.properties")
-    if (propsFile.exists()) {
-        println "----- build.properties -----"
-        println propsFile.text
-        println "---------------------------"
-    } else {
-        println "build.properties file not found."
-    }
+    println sb.toString()
 }
 
 static def parseVersion(String v) {
