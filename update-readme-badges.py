@@ -15,18 +15,6 @@ if len(sys.argv) < 2:
 
 versions = json.loads(sys.argv[1])
 
-# Get workflow runs
-def get_latest_run_id():
-    url = f"https://api.github.com/repos/{REPO}/actions/workflows/test-matrix.yml/runs?branch=main&status=completed&per_page=1"
-    headers = {"Authorization": f"Bearer {GITHUB_TOKEN}", "Accept": "application/vnd.github+json"}
-    r = requests.get(url, headers=headers)
-    r.raise_for_status()
-    runs = r.json()["workflow_runs"]
-    if not runs:
-        print("No workflow runs found.")
-        sys.exit(1)
-    return runs[0]["id"]
-
 # Get jobs for the latest run
 def get_jobs(run_id):
     url = f"https://api.github.com/repos/{REPO}/actions/runs/{run_id}/jobs"
@@ -35,7 +23,10 @@ def get_jobs(run_id):
     r.raise_for_status()
     return r.json()["jobs"]
 
-run_id = get_latest_run_id()
+run_id = os.environ.get("GITHUB_RUN_ID")
+if not run_id:
+    print("GITHUB_RUN_ID not set.")
+    sys.exit(1)
 jobs = get_jobs(run_id)
 
 # Map version to status
