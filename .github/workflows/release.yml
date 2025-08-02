@@ -24,11 +24,14 @@ jobs:
           done
           fi
           echo "Using tag: $TAG"
+          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Create Tag
+        run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag "$TAG"
-          git push origin "$TAG"
-          echo "TAG=$TAG" >> $GITHUB_OUTPUT
+          git tag ${{ steps.tag.outputs.TAG }}
+          git push origin ${{ steps.tag.outputs.TAG }}
 
       - name: Generate changelog
         id: changelog
@@ -45,7 +48,6 @@ jobs:
           name: Release ${{ steps.tag.outputs.TAG }}
           body: ${{ steps.changelog.outputs.changelog }}
           generate_release_notes: true
-        env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   generate-matrix:
@@ -113,4 +115,3 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         run: ./gradlew modrinthSyncBody
-
