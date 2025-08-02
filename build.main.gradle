@@ -22,7 +22,11 @@ def generateMcVersionMacros(List<String> versions, int selectedIndex) {
         if (i == selectedIndex) sb << "MC_VER=${i}\n"
     }
     new File(project.projectDir, "build.properties").text = sb.toString()
-    println "📝 build.properties written with ${versions.size()} versions (MC_VER=${selectedIndex})"
+    println "📝 build.properties written with ${versions.size()} versions (MC_VER=${selectedIndex}) for Minecraft ${project.minecraft_version}."
+    println "Available versions: ${versions.join(', ')}"
+    println "Selected version: ${versions[selectedIndex]} (index ${selectedIndex})"
+    println "Java version for Minecraft ${project.minecraft_version}: ${getJavaVersionForMinecraft(project.minecraft_version).majorVersion}"
+    println "Build properties file written to: ${new File(project.projectDir, "build.properties").absolutePath}"
 }
 
 static def parseVersion(String v) {
