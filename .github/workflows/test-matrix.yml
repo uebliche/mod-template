@@ -52,7 +52,7 @@ jobs:
   update-readme-badges:
     needs: test
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && always()
     permissions:
       contents: write
     steps:
