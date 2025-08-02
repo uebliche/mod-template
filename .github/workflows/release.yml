@@ -23,9 +23,7 @@ jobs:
           TAG="${DATE}${LETTER}"
           LETTER=$(echo "$LETTER" | tr "0-9a-y" "1-9a-z")
           done
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          fi 
           git tag $TAG
           git push origin $TAG
           echo "Using tag: $TAG"
