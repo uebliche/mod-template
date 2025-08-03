@@ -67,5 +67,10 @@
       "on_property": "title",
       "target": "$1"
     }
-  ]
+  ],
+  "duplicate_filter": {
+    "pattern": "\\[ABC-....\\]",
+    "on_property": "title",
+    "method": "match"
+  }
 }
