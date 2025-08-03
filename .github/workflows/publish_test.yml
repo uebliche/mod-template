@@ -118,7 +118,7 @@ jobs:
           generate_release_notes: false
 
   generate-matrix:
-    if: ${{ github.event.inputs.only_description == false }}
+    if: ${{ github.event.inputs.only_description != 'true' }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
