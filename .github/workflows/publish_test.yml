@@ -32,11 +32,10 @@ permissions:
 env:
   DEBUG: ${{ github.event.inputs.debug }}
   VERSION_TYPE: ${{ github.event.inputs.version_type }}
-  ONLY_DESCRIPTION: ${{ github.event.inputs.only_description == true }}
 
 jobs:
   release:
-    if: ${{ ONLY_DESCRIPTION == false }}
+    if: ${{ github.event.inputs.only_description == false }}
     runs-on: ubuntu-latest
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -119,7 +118,7 @@ jobs:
           generate_release_notes: false
 
   generate-matrix:
-    if: ${{ ONLY_DESCRIPTION == false }}
+    if: ${{ github.event.inputs.only_description == false }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
