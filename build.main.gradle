@@ -349,7 +349,7 @@ def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog 
 println "🔄 Changelog:\n${changelogText}"
 
 modrinth {
-    debugMode = project.hasProperty("debug") ? project.debug : false
+    debugMode = project.hasProperty("debug") && project.debug == "true"
     syncBodyFrom = rootProject.file("README.md").text
     token = System.getenv("MODRINTH_TOKEN")
     projectId = project.modrinth_projectId
