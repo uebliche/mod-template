@@ -72,14 +72,9 @@
   "empty_template": "- no changes",
   "label_extractor": [
     {
-      "pattern": "(.) (.+)",
-      "target": "$1",
-      "flags": "gu"
-    },
-    {
-      "pattern": "\\[Issue\\]",
+      "pattern": "^(feat|fix|chore|docs|refactor|ci|style|test|build)(\\([\\w\\-\\.]+\\))?(!)?:",
       "on_property": "title",
-      "method": "match"
+      "target": "$1"
     }
   ],
   "duplicate_filter": {
