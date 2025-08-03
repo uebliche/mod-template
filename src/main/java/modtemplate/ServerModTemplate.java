@@ -19,7 +19,7 @@ public class ServerModTemplate implements DedicatedServerModInitializer {
     public void onInitializeServer() {
         LOGGER.info("Hello Fabric server world!");
 
-        LOGGER.info("BuildInfo: version={}, group={}, artifact={}, commit={}, branch={}, targetMCVersion={}", BuildInfo.version(), BuildInfo.group(), BuildInfo.artifact(), BuildInfo.commit(), BuildInfo.branch(), BuildInfo.mcVersion());
+        LOGGER.info("BuildInfo: version={}, group={}, artifact={}, commit={}, branch={}, targetMCVersion={}, versionType={}", BuildInfo.version(), BuildInfo.group(), BuildInfo.artifact(), BuildInfo.commit(), BuildInfo.branch(), BuildInfo.mcVersion(), BuildInfo.versionType());
          #if MC_VER >= MC_1_20_5
         PayloadTypeRegistry.playC2S().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(HelloPacket.ID, HelloPacket.STREAM_CODEC);
