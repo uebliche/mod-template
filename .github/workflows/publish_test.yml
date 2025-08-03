@@ -130,14 +130,6 @@ jobs:
       - name: Write changelog to file
         run: echo "${{ steps.changelog.outputs.changelog }}" > changelog.md
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.tag.outputs.TAG }}
-          name: Release ${{ steps.tag.outputs.TAG }}
-          body: ${{ steps.changelog.outputs.changelog }}
-          generate_release_notes: false
-
   generate-matrix:
     if: ${{ github.event.inputs.only_description != 'true' }}
     runs-on: ubuntu-latest
