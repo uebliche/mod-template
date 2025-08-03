@@ -1,6 +1,16 @@
-name: Release
+name: Publish TEST
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      version_type:
+        type: choice
+        description: Version Type
+        options:
+          - release
+          - beta
+          - alpha
+
+
 permissions:
   contents: write
 
@@ -22,7 +32,7 @@ jobs:
           DATE=$(date +'%Y.%m.%d')
           TAGS=$(git tag --list "${DATE}*")
           echo "Existing tags: $TAGS"
-      
+          
           if [ -z "$TAGS" ]; then
             VERSION="$DATE"
           else
@@ -34,7 +44,7 @@ jobs:
             fi
             VERSION="${DATE}${NEXT_SUFFIX}"
           fi
-      
+          
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$VERSION"
@@ -72,7 +82,8 @@ jobs:
           exportOnly: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      - name: Write changelog to file
+        run: echo "${{ steps.changelog.outputs.changelog }}" > changelog.md
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -103,7 +114,7 @@ jobs:
           echo "DEBUG: FINAL_VERSIONS=$FINAL_VERSIONS"  # Debug output
 
   build:
-    needs: [generate-matrix, release]
+    needs: [ generate-matrix, release ]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -120,7 +131,7 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Build
-        run: ./gradlew build remapJar -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }}
+        run: ./gradlew build remapJar -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }}
       - name: Upload remapped jar to release
         uses: softprops/action-gh-release@v2
         with:
@@ -132,7 +143,7 @@ jobs:
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
-        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }}
+        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }}
 
   update-description:
     runs-on: ubuntu-latest
