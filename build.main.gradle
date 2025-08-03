@@ -347,6 +347,7 @@ remapJar {
     inputFile = shadowJar.archiveFile.get()
     archiveFileName = "${project.archives_base_name}-${version}.jar"
 }
+def changelogText = file('release-notes.md').exists() ? file('release-notes.md').text : "No changelog provided."
 
 modrinth {
     println "🔗 Configuring Modrinth upload..."
@@ -363,7 +364,7 @@ modrinth {
     dependencies {
         required.project "fabric-api"
     }
-    changelog = project.hasProperty("notes") ? project.notes : "No changelog provided."
+    changelog = changelogText
 }
 
 task updateAuthors {
