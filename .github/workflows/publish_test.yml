@@ -21,6 +21,10 @@ on:
         type: string
         description: Version to build (if single_version is true)
         default: ''
+      only_description:
+        type: boolean
+        description: Only update the description on Modrinth
+        default: false
 
 permissions:
   contents: write
@@ -31,6 +35,7 @@ env:
 
 jobs:
   release:
+    if: ${{ !github.event.inputs.only_description }}
     runs-on: ubuntu-latest
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
@@ -113,6 +118,7 @@ jobs:
           generate_release_notes: false
 
   generate-matrix:
+    if: ${{ !github.event.inputs.only_description }}
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
@@ -171,7 +177,6 @@ jobs:
 
   update-description:
     runs-on: ubuntu-latest
-    needs: release
     steps:
       - uses: actions/checkout@v3
 
@@ -187,4 +192,4 @@ jobs:
       - name: Update Description
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinthSyncBody
+        run: ./gradlew modrinthSyncBody -Pdebug=${{ github.event.inputs.debug }}
