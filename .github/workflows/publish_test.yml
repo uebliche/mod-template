@@ -102,6 +102,7 @@ jobs:
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
         with:
+          mode: "COMMIT"
           configuration: '.github/changelog-configuration.json'
           fromTag: ${{ steps.prevtag.outputs.previous_tag }}
           toTag: ${{ steps.tag.outputs.TAG }}

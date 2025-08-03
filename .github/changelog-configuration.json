@@ -1,10 +1,10 @@
 {
-  "template": "## Changelog\n\n{{#commits}}\n- {{messageTitle}} ({{author}})\n{{/commits}}\n\n{{#issues}}\n- {{#if isPullRequest}}PR #{{id}}: {{title}}{{else}}Issue #{{id}}: {{title}}{{/if}} ({{author}})\n{{/issues}}\n\n---\n\n**Full commit log:**\n{{#commits}}\n- {{hash}}: {{messageTitle}} ({{author}})\n{{/commits}}\n",
+  "template": "#{{CHANGELOG}}",
   "commit": "- {{messageTitle}} ({{author}})",
   "categories": [
     {
       "title": "🚀 Features",
-      "labels": ["feature", "enhancement"]
+      "labels": ["feature", "enhancement", "feat"]
     },
     {
       "title": "🐛 Bug Fixes",
@@ -17,6 +17,17 @@
     {
       "title": "📚 Documentation",
       "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "🎉 Other",
+      "labels": []
+    }
+  ],
+  "label_extractor": [
+    {
+      "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
+      "on_property": "title",
+      "target": "$1"
     }
   ],
   "sort": {
