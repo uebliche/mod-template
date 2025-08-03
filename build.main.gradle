@@ -14,6 +14,10 @@ base {
     archivesName = project.archives_base_name
 }
 
+def isDebugMode() {
+    return System.getenv("DEBUG")?.toBoolean() ?: false
+}
+
 // -------------------- VERSION HANDLING --------------------
 def generateMcVersionMacros(List<String> versions, int selectedIndex) {
     def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
@@ -349,7 +353,8 @@ def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog 
 println "🔄 Changelog:\n${changelogText}"
 
 modrinth {
-    debugMode = project.hasProperty("debug") ?: false
+    println "🔗 Configuring Modrinth upload..."
+    debugMode = isDebugMode()
     syncBodyFrom = rootProject.file("README.md").text
     token = System.getenv("MODRINTH_TOKEN")
     projectId = project.modrinth_projectId
