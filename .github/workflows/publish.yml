@@ -1,4 +1,4 @@
-name: Publish TEST
+name: Publish
 on:
   workflow_dispatch:
     inputs:
