@@ -52,19 +52,24 @@ jobs:
           DATE=$(date +'%Y.%m.%d')
           TAGS=$(git tag --list "${DATE}*")
           echo "Existing tags: $TAGS"
-          
+      
           if [ -z "$TAGS" ]; then
-            VERSION="$DATE"
+          VERSION="$DATE"
           else
-            SUFFIXES=$(echo "$TAGS" | sed -n "s/^$DATE\([a-z]\)$/\1/p")
-            NEXT_SUFFIX="b"
-            if [ -n "$SUFFIXES" ]; then
-              LAST_SUFFIX=$(echo "$SUFFIXES" | sort | tail -n1)
-              NEXT_SUFFIX=$(printf "\\$(printf '%03o' $(( $(printf '%d' "'$LAST_SUFFIX") + 1 )) )")
-            fi
-            VERSION="${DATE}${NEXT_SUFFIX}"
+          SUFFIXES=$(echo "$TAGS" | sed -n "s/^$DATE\([a-z]\).*$/\1/p")
+          NEXT_SUFFIX="b"
+          if [ -n "$SUFFIXES" ]; then
+          LAST_SUFFIX=$(echo "$SUFFIXES" | sort | tail -n1)
+          NEXT_SUFFIX=$(printf "\\$(printf '%03o' $(( $(printf '%d' "'$LAST_SUFFIX") + 1 )) )")
           fi
-          
+          VERSION="${DATE}${NEXT_SUFFIX}"
+          fi
+      
+          BRANCH="${GITHUB_REF##*/}"
+          if [ "$BRANCH" != "main" ]; then
+          VERSION="${VERSION}-${BRANCH}"
+          fi
+      
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$VERSION"
