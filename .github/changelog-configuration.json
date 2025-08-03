@@ -1,38 +1,30 @@
 {
-  "template": "#{{CHANGELOG}}",
-  "commit": "- {{messageTitle}} ({{author}})",
+  "pr_template": "- ${{TITLE}} (#${{NUMBER}})",
   "categories": [
     {
-      "title": "🚀 Features",
-      "labels": ["feature", "enhancement", "feat"]
+      "title": "## 🚀 Features",
+      "labels": ["enhancement", "feature"]
     },
     {
-      "title": "🐛 Bug Fixes",
+      "title": "## 🛠️ Minor Changes",
+      "labels": ["change"]
+    },
+    {
+      "title": "## 🔎 Breaking Changes",
+      "labels": ["breaking"]
+    },
+    {
+      "title": "## 🐛 Fixes",
       "labels": ["bug", "fix"]
     },
     {
-      "title": "🧰 Maintenance",
-      "labels": ["chore", "maintenance", "refactor"]
+      "title": "## 📄 Documentation",
+      "labels": ["documentation"]
     },
     {
-      "title": "📚 Documentation",
-      "labels": ["documentation", "docs"]
-    },
-    {
-      "title": "🎉 Other",
-      "labels": []
+      "title": "## 🔗 Dependency Updates",
+      "labels": ["dependency"]
     }
   ],
-  "label_extractor": [
-    {
-      "pattern": "^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test){1}(\\([\\w\\-\\.]+\\))?(!)?: ([\\w ])+([\\s\\S]*)",
-      "on_property": "title",
-      "target": "$1"
-    }
-  ],
-  "sort": {
-    "commits": "date-desc"
-  },
-  "pr_template": "- {{title}} (#{{id}} by @{{author}})"
+  "template": "${{CATEGORIZED_COUNT}} changes since ${{FROM_TAG}}\n\n${{CHANGELOG}}"
 }
-
