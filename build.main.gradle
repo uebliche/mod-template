@@ -349,6 +349,8 @@ def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog 
 println "🔄 Changelog:\n${changelogText}"
 
 modrinth {
+    println "🔗 Configuring Modrinth upload..."
+    println "Debug mode: ${project.hasProperty("debug") && project.debug == "true"} (${project.property("debug")})"
     debugMode = project.hasProperty("debug") && project.debug == "true"
     syncBodyFrom = rootProject.file("README.md").text
     token = System.getenv("MODRINTH_TOKEN")
