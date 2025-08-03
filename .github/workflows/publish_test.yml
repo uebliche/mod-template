@@ -101,14 +101,6 @@ jobs:
       - name: Generate changelog
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v4
-        with:
-#          mode: "COMMIT"
-#          configuration: '.github/changelog-configuration.json'
-#          fromTag: ${{ steps.prevtag.outputs.previous_tag }}
-#          toTag: ${{ steps.tag.outputs.TAG }}
-#          fetchViaCommits: true
-#          commitMode: false
-#          exportOnly: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
