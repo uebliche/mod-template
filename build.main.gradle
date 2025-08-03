@@ -238,11 +238,11 @@ processResources {
 
 
     def custom = [:]
-        def modmenu = [:]
-            def modmenu_links = [:]
-            if (project.hasProperty("discord"))
-                modmenu_links["modmenu.discord"] = project.discord
-        modmenu["links"] = modmenu_links
+    def modmenu = [:]
+    def modmenu_links = [:]
+    if (project.hasProperty("discord"))
+        modmenu_links["modmenu.discord"] = project.discord
+    modmenu["links"] = modmenu_links
     custom["modmenu"] = modmenu
 
     def customJson = JsonOutput.toJson(custom)
@@ -348,10 +348,6 @@ remapJar {
     archiveFileName = "${project.archives_base_name}-${version}.jar"
 }
 
-def changelogFile = file("changelog.md")
-def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog found."
-println "🔄 Changelog:\n${changelogText}"
-
 modrinth {
     println "🔗 Configuring Modrinth upload..."
     debugMode = isDebugMode()
@@ -367,7 +363,7 @@ modrinth {
     dependencies {
         required.project "fabric-api"
     }
-    changelog = changelogText
+    changelog = project.property("notes", "No changelog provided.")
 }
 
 task updateAuthors {
