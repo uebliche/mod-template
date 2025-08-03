@@ -179,6 +179,7 @@ sourceSets {
                 property("ARTIFACT", project.name)
                 property("VERSION", project.version.toString())
                 property("MC_VERSION", project.minecraft_version)
+                property("VERSION_TYPE", project.hasProperty("version_type") ? project.version_type : "dev")
             }
         }
     }
@@ -226,8 +227,6 @@ processResources {
         contact["issues"] = project.issues
     if (project.hasProperty("sources"))
         contact["sources"] = project.sources
-    if (project.hasProperty("discord"))
-        contact["discord"] = project.discord
 
     def contactJson = JsonOutput.toJson(contact)
     println "📜 Authors: ${authors.size()} unique contributors found."
@@ -235,16 +234,11 @@ processResources {
 
 
     def custom = [:]
-
-    def modmenu = [:]
-
-    def modmenu_links = [:]
-
-    if (project.hasProperty("discord"))
-        modmenu_links["modmenu.discord"] = project.discord
-
-    modmenu["links"] = modmenu_links
-
+        def modmenu = [:]
+            def modmenu_links = [:]
+            if (project.hasProperty("discord"))
+                modmenu_links["modmenu.discord"] = project.discord
+        modmenu["links"] = modmenu_links
     custom["modmenu"] = modmenu
 
     def customJson = JsonOutput.toJson(custom)
@@ -266,7 +260,9 @@ processResources {
         entrypoints["common"] = commonEntrypoints
         println "🌐 Common entrypoint: ${project.common_main_class}"
     }
+
     def entrypointsJson = JsonOutput.toJson(entrypoints)
+    println "📂 Entrypoints: ${entrypointsJson}"
 
 
     def enviroment = "*"
@@ -277,6 +273,7 @@ processResources {
     } else if (project.hasProperty("server_main_class")) {
         enviroment = "server"
     }
+    println "🌍 Environment: ${enviroment}"
 
 
     // Use project.name for mod_id (lowercase), mod_name (title case), and icon_path if not set, empty string for others
@@ -347,36 +344,9 @@ remapJar {
     archiveFileName = "${project.archives_base_name}-${version}.jar"
 }
 
-def getChangelogSinceLastTag = {
-    def stdout = new ByteArrayOutputStream()
-    def lastTag = 'HEAD'
-
-    try {
-        def tagOut = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'describe', '--tags', '--abbrev=0'
-            standardOutput = tagOut
-            ignoreExitValue = true
-        }
-        lastTag = tagOut.toString('UTF-8').trim()
-    } catch (ignored) {
-    }
-
-    exec {
-        commandLine 'git', 'log', "${lastTag}..HEAD", '--pretty=format:- %s', '--no-merges'
-        standardOutput = stdout
-        ignoreExitValue = true
-    }
-
-    def output = stdout.toString('UTF-8').trim()
-    return output ?: "No changes since last tag."
-}
-
-tasks.register("printChangelog") {
-    doLast {
-        println "🔄 Changes since last tag:\n${getChangelogSinceLastTag()}"
-    }
-}
+def changelogFile = file("changelog.md")
+def changelogText = changelogFile.exists() ? changelogFile.text : "No changelog found."
+println "🔄 Changelog:\n${changelogText}"
 
 modrinth {
     syncBodyFrom = rootProject.file("README.md").text
@@ -384,14 +354,14 @@ modrinth {
     projectId = project.modrinth_projectId
     versionNumber = version
     versionName = "${archives_base_name}-${minecraft_version}+${version}"
-    versionType = project.version_type
+    versionType = project.hasProperty("version_type") ? project.version_type : "release"
     uploadFile = remapJar
     gameVersions = ["${project.minecraft_version}"]
     loaders = ["fabric"]
     dependencies {
         required.project "fabric-api"
     }
-    changelog = "🔄 Changes:\n${getChangelogSinceLastTag()}"
+    changelog = changelogText
 }
 
 task updateAuthors {
