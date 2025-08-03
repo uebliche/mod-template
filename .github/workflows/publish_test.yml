@@ -35,7 +35,7 @@ env:
 
 jobs:
   release:
-    if: ${{ github.event.inputs.only_description != 'true' }}
+    if: ${{ !github.event.inputs.only_description }}
     runs-on: ubuntu-latest
     outputs:
       TAG: ${{ steps.tag.outputs.TAG }}
