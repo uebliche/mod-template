@@ -192,4 +192,4 @@ jobs:
       - name: Update Description
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinthSyncBody
+        run: ./gradlew modrinthSyncBody -Pdebug=${{ github.event.inputs.debug }}
