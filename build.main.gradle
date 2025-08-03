@@ -301,7 +301,7 @@ processResources {
     }
 
     // Dynamically set compatibilityLevel in mod-template.mixins.json based on effectiveJavaVersion
-    filesMatching("mod-template.mixins.json") {
+    filesMatching(project.hasProperty("mod_id") ? project.mod_id : project.name.toLowerCase() +".mixins.json") {
         expand([
                 "compatibilityLevel": "JAVA_${effectiveJavaVersion.majorVersion}"
         ])
