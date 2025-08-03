@@ -19,4 +19,5 @@ public final class BuildInfo {
     public static String version() { return VERSION; }
 
     public static String mcVersion() { return MC_VERSION; }
+    public static String versionType() { return VERSION_TYPE; }
 }
