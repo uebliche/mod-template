@@ -101,6 +101,7 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.TAG }}
           generate_release_notes: true
+
       - name: Get GitHub Release Notes
         id: get_release_notes
         run: |
@@ -163,13 +164,15 @@ jobs:
           files: build/libs/${{ env.ARCHIVES_BASE_NAME }}-${{ needs.release.outputs.TAG }}-*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Write release notes to file
+        run: echo "${{ needs.release.outputs.notes }}" > release-notes.md
 
       - name: Publish to Modrinth
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
           CHANGELOG: ${{ needs.release.outputs.notes }}
-        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }} -pnotes=${{ needs.release.outputs.notes }}
+        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }}
 
   update-description:
     runs-on: ubuntu-latest
