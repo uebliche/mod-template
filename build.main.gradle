@@ -14,6 +14,10 @@ base {
     archivesName = project.archives_base_name
 }
 
+def isDebugMode() {
+    return System.getenv("DEBUG")?.toBoolean() ?: false
+}
+
 // -------------------- VERSION HANDLING --------------------
 def generateMcVersionMacros(List<String> versions, int selectedIndex) {
     def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
@@ -350,8 +354,7 @@ println "🔄 Changelog:\n${changelogText}"
 
 modrinth {
     println "🔗 Configuring Modrinth upload..."
-    println "Debug mode: ${project.hasProperty("debug") && project.debug == "true"} (${project.property("debug")})"
-    debugMode = project.hasProperty("debug") && project.debug == "true"
+    debugMode = isDebugMode()
     syncBodyFrom = rootProject.file("README.md").text
     token = System.getenv("MODRINTH_TOKEN")
     projectId = project.modrinth_projectId
