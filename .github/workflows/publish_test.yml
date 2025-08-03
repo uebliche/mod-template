@@ -104,19 +104,7 @@ jobs:
       - name: Get GitHub Release Notes
         id: get_release_notes
         run: |
-          for i in {1..5}; do
-            RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/${{ needs.release.outputs.TAG }} --jq '.id' 2>/dev/null || true)
-            if [ -n "$RELEASE_ID" ]; then
-              break
-            fi
-            echo "Release noch nicht verfügbar, warte 3 Sekunden..."
-            sleep 3
-          done
-          if [ -z "$RELEASE_ID" ]; then
-            echo "Release konnte nicht gefunden werden."
-            exit 1
-          fi
-          NOTES=$(gh api repos/${{ github.repository }}/releases/$RELEASE_ID --jq '.body')
+          NOTES=$(gh api /repos/${{ github.repository }}/releases/tags/${{ steps.tag.outputs.TAG }} --jq '.body')
           echo "notes<<EOF" >> $GITHUB_OUTPUT
           echo "$NOTES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
