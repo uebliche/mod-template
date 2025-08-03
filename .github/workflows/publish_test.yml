@@ -13,6 +13,14 @@ on:
         type: boolean
         description: Debug build
         default: false
+      single_version:
+        type: boolean
+        description: Single version build
+        default: false
+      version:
+        type: string
+        description: Version to build (if single_version is true)
+        default: ''
 
 permissions:
   contents: write
@@ -131,7 +139,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc_version: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+        mc_version: ${{ github.event.inputs.single_version == 'true' && github.event.inputs.version != '' && fromJson(format('["{0}"]', github.event.inputs.version)) || fromJson(needs.generate-matrix.outputs.matrix) }}
     name: Build ${{ matrix.mc_version }}
     steps:
       - uses: actions/checkout@v3
