@@ -18,10 +18,10 @@ if not GITHUB_TOKEN:
     missing.append("GITHUB_TOKEN")
 if missing:
     message = f"Missing environment variables: {', '.join(missing)}"
-    if not os.environ.get("CI"):
-        logging.warning(message)
-    else:
+    if os.environ.get("CI"):
         print(message, file=sys.stderr)
+    else:
+        logging.warning(message)
     sys.exit(1)
 
 if len(sys.argv) < 2:
