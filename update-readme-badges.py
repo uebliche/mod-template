@@ -2,12 +2,26 @@ import os
 import sys
 import requests
 import json
+import logging
 
 README = "README.md"
 START_MARKER = "<!-- build_test.start -->"
 END_MARKER = "<!-- build_test.end -->"
 REPO = os.environ.get("GITHUB_REPOSITORY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+
+missing = []
+if not REPO:
+    missing.append("GITHUB_REPOSITORY")
+if not GITHUB_TOKEN:
+    missing.append("GITHUB_TOKEN")
+if missing:
+    message = f"Missing environment variables: {', '.join(missing)}"
+    if not os.environ.get("CI"):
+        logging.warning(message)
+    else:
+        print(message, file=sys.stderr)
+    sys.exit(1)
 
 if len(sys.argv) < 2:
     print("Usage: update-readme-badges.py '[\"1.16\",\"1.17\"]'")
