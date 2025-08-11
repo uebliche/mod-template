@@ -27,6 +27,17 @@ Clone the repository and invoke the build:
 
 The resulting mod jar will be placed in `build/libs`.
 
+## Updating build.main.gradle
+
+The file `build.main.gradle` is vendored from the upstream [uebliche/mod-template](https://github.com/uebliche/mod-template) repository.
+To update it to the latest version, run:
+
+```bash
+curl -L https://raw.githubusercontent.com/uebliche/mod-template/main/build.main.gradle -o build.main.gradle
+```
+
+Commit the refreshed file to keep the template in sync with upstream.
+
 ## Customisation
 
 Adjust the mod id, name and other metadata in `gradle.properties`.
