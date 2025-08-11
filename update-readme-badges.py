@@ -4,6 +4,7 @@ import requests
 import json
 import logging
 
+logging.basicConfig(level=logging.WARNING)
 README = "README.md"
 START_MARKER = "<!-- build_test.start -->"
 END_MARKER = "<!-- build_test.end -->"
