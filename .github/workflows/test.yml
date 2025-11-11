@@ -15,19 +15,60 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v3
-      - name: Parse Versions
+      - name: Build loader/version matrix
         id: set-matrix
         run: |
-          MIN_VERSION=$(grep '^buildFromVersion=' gradle.properties | cut -d'=' -f2)
-          curl -s https://meta.fabricmc.net/v2/versions/game > versions.json
-          curl -s https://maven.fabricmc.net/jdlist.txt > jdlist.txt
-          VERSIONS=$(jq -r '.[] | select(.stable == true) | .version' versions.json | sort -V | awk -v min="$MIN_VERSION" '{ if ($1 >= min) print $1 }')
-          FABRIC_API_MC_VERSIONS=$(grep -oP 'fabric-api-[^+]+?\+\K[0-9]+\.[0-9]+(\.[0-9]+)?' jdlist.txt | sort -V | uniq)
-          FINAL_VERSIONS=$(comm -12 <(echo "$VERSIONS") <(echo "$FABRIC_API_MC_VERSIONS") | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=$FINAL_VERSIONS" >> $GITHUB_OUTPUT
-          echo "DEBUG: VERSIONS=$VERSIONS"  # Debug output
-          echo "DEBUG: FABRIC_API_MC_VERSIONS=$FABRIC_API_MC_VERSIONS"  # Debug output
-          echo "DEBUG: FINAL_VERSIONS=$FINAL_VERSIONS"  # Debug output
+          export MIN_VERSION=$(grep '^buildFromVersion=' gradle.properties | cut -d'=' -f2)
+          MATRIX=$(python3 <<'PY'
+          import json, os, pathlib, urllib.request
+
+          min_version = os.environ["MIN_VERSION"]
+
+          def parse_version(ver: str):
+              parts = [int(part) for part in ver.split(".")]
+              while len(parts) < 3:
+                  parts.append(0)
+              return parts
+
+          def version_at_least(ver: str, minimum: str):
+              return parse_version(ver) >= parse_version(minimum)
+
+          data = json.loads(pathlib.Path("versions.matrix.json").read_text())
+          matrix = []
+
+          # Fabric entries: derive from fabric list or fallback to explicit matrix file
+          fabric_versions = []
+          if data.get("fabric"):
+              for entry in data["fabric"]:
+                  if isinstance(entry, str) and version_at_least(entry, min_version):
+                      fabric_versions.append(entry)
+          else:
+              with urllib.request.urlopen("https://meta.fabricmc.net/v2/versions/game") as resp:
+                  versions = json.load(resp)
+              stable = sorted({entry["version"] for entry in versions if entry.get("stable")}, key=parse_version)
+              fabric_versions = [ver for ver in stable if version_at_least(ver, min_version)]
+
+          for mc in fabric_versions:
+              matrix.append({"loader": "fabric", "mcVersion": mc, "args": []})
+
+          # Forge entries
+          for entry in data.get("forge", []):
+              if isinstance(entry, str):
+                  mc = entry
+                  props = {}
+              else:
+                  mc = entry.get("mc") or entry.get("mcVersion")
+                  props = entry.get("properties") or {}
+              if not mc or not version_at_least(mc, min_version):
+                  continue
+              args = [f"-P{key}={value}" for key, value in props.items()]
+              matrix.append({"loader": "forge", "mcVersion": mc, "args": args})
+
+          print(json.dumps(matrix))
+          PY
+          )
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Resolved matrix: $MATRIX"
 
   test:
     needs: generate-matrix
@@ -35,8 +76,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc_version: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
-    name: Test ${{ matrix.mc_version }}
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    name: Test ${{ matrix.loader }} ${{ matrix.mcVersion }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Java
@@ -47,7 +88,8 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Test Build
-        run: ./gradlew build -Pminecraft_version=${{ matrix.mc_version }}
+        run: |
+          ./gradlew :loader-${{ matrix.loader }}:build -PmcVersion=${{ matrix.mcVersion }} ${{ join(matrix.args, ' ') }}
 
   update-readme-badges:
     needs: [test, generate-matrix]
@@ -68,8 +110,16 @@ jobs:
       - name: Update README badges
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MATRIX_JSON: ${{ needs.generate-matrix.outputs.matrix }}
         run: |
-          python3 update-readme-badges.py '${{ needs.generate-matrix.outputs.matrix }}'
+          VERSIONS=$(python3 <<'PY'
+          import json, os
+          matrix = json.loads(os.environ["MATRIX_JSON"])
+          versions = sorted({entry["mcVersion"] for entry in matrix}, key=lambda v: [int(x) for x in v.split(".")])
+          print(json.dumps(versions))
+          PY
+          )
+          python3 update-readme-badges.py "$VERSIONS"
       - name: Commit and push README update
         run: |
           git config user.name "github-actions[bot]"
