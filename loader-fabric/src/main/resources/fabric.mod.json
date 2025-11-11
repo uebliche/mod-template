@@ -1,0 +1,23 @@
+{
+    "schemaVersion": 1,
+    "id": "${mod_id}",
+    "version": "${version}",
+    "name": "${mod_name}",
+    "description": "${description}",
+    "authors": [],
+    "contact": {},
+    "license": "${license_type}",
+    "icon": "${icon_path}",
+    "environment": "${environment}",
+    "entrypoints": {},
+    "mixins": [
+        "mod-template.mixins.json"
+    ],
+    "depends": {
+        "fabricloader": "~${fabricloader_version}",
+        "minecraft": "~${minecraft_version}",
+        "java": ">=${java_version}",
+        "fabric-api": "*"
+    },
+    "custom": {}
+}

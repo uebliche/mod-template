@@ -120,20 +120,67 @@ jobs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
       - uses: actions/checkout@v3
-      - name: Parse Versions
+      - name: Build loader/version matrix
         id: set-matrix
         run: |
-          MIN_VERSION=$(grep '^buildFromVersion=' gradle.properties | cut -d'=' -f2)
-          curl -s https://meta.fabricmc.net/v2/versions/game > versions.json
-          curl -s https://maven.fabricmc.net/jdlist.txt > jdlist.txt
-          VERSIONS=$(jq -r '.[] | select(.stable == true) | .version' versions.json | sort -V | awk -v min="$MIN_VERSION" '{ if ($1 >= min) print $1 }')
-          # Extract only the MC version from jdlist.txt (after the last '+')
-          FABRIC_API_MC_VERSIONS=$(grep -oP 'fabric-api-[^+]+?\+\K[0-9]+\.[0-9]+(\.[0-9]+)?' jdlist.txt | sort -V | uniq)
-          FINAL_VERSIONS=$(comm -12 <(echo "$VERSIONS") <(echo "$FABRIC_API_MC_VERSIONS") | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=$FINAL_VERSIONS" >> $GITHUB_OUTPUT
-          echo "DEBUG: VERSIONS=$VERSIONS"  # Debug output
-          echo "DEBUG: FABRIC_API_MC_VERSIONS=$FABRIC_API_MC_VERSIONS"  # Debug output
-          echo "DEBUG: FINAL_VERSIONS=$FINAL_VERSIONS"  # Debug output
+          export MIN_VERSION=$(grep '^buildFromVersion=' gradle.properties | cut -d'=' -f2)
+          MATRIX=$(python3 <<'PY'
+          import json, os, pathlib, urllib.request
+
+          min_version = os.environ["MIN_VERSION"]
+          version_filter = os.environ.get("VERSION_FILTER", "").strip()
+
+          def parse_version(ver: str):
+              parts = [int(part) for part in ver.split(".")]
+              while len(parts) < 3:
+                  parts.append(0)
+              return parts
+
+          def version_at_least(ver: str, minimum: str):
+              return parse_version(ver) >= parse_version(minimum)
+
+          data = json.loads(pathlib.Path("versions.matrix.json").read_text())
+          matrix = []
+
+          fabric_versions = []
+          if data.get("fabric"):
+              for entry in data["fabric"]:
+                  if isinstance(entry, str) and version_at_least(entry, min_version):
+                      fabric_versions.append(entry)
+          else:
+              with urllib.request.urlopen("https://meta.fabricmc.net/v2/versions/game") as resp:
+                  versions = json.load(resp)
+              stable = sorted({entry["version"] for entry in versions if entry.get("stable")}, key=parse_version)
+              fabric_versions = [ver for ver in stable if version_at_least(ver, min_version)]
+
+          for mc in fabric_versions:
+              matrix.append({"loader": "fabric", "mcVersion": mc, "args": []})
+
+          for entry in data.get("forge", []):
+              if isinstance(entry, str):
+                  mc = entry
+                  props = {}
+              else:
+                  mc = entry.get("mc") or entry.get("mcVersion")
+                  props = entry.get("properties") or {}
+              if not mc or not version_at_least(mc, min_version):
+                  continue
+              args = [f"-P{key}={value}" for key, value in props.items()]
+              matrix.append({"loader": "forge", "mcVersion": mc, "args": args})
+
+          if version_filter:
+              matrix = [entry for entry in matrix if entry["mcVersion"] == version_filter]
+          print(json.dumps(matrix))
+          PY
+          )
+          if [ -z "$MATRIX" ] || [ "$MATRIX" = "[]" ]; then
+            echo "No matching Minecraft versions found."
+            exit 1
+          fi
+          echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          echo "Resolved matrix: $MATRIX"
+        env:
+          VERSION_FILTER: ${{ github.event.inputs.version }}
 
   build:
     needs: [ generate-matrix, release ]
@@ -141,8 +188,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        mc_version: ${{ github.event.inputs.version != '' && fromJson(format('["{0}"]', github.event.inputs.version)) || fromJson(needs.generate-matrix.outputs.matrix) }}
-    name: Build ${{ matrix.mc_version }}
+        include: ${{ fromJson(needs.generate-matrix.outputs.matrix) }}
+    name: Build ${{ matrix.loader }} ${{ matrix.mcVersion }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Java
@@ -154,25 +201,41 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Build
-        run: ./gradlew build remapJar -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }}
+      - name: Build loader artifact
+        env:
+          LOADER: ${{ matrix.loader }}
+          MC_VERSION: ${{ matrix.mcVersion }}
+          TAG: ${{ needs.release.outputs.TAG }}
+          VERSION_TYPE: ${{ github.event.inputs.version_type }}
+          DEBUG_FLAG: ${{ github.event.inputs.debug }}
+          EXTRA_ARGS: ${{ join(matrix.args, ' ') }}
+        run: |
+          set -euo pipefail
+          if [ "$LOADER" = "fabric" ]; then
+              TASKS=":loader-fabric:build :loader-fabric:remapJar"
+          else
+              TASKS=":loader-${LOADER}:build"
+          fi
+          ./gradlew $TASKS -PmcVersion=$MC_VERSION -Ptag=$TAG -Pversion_type=$VERSION_TYPE -Pdebug=$DEBUG_FLAG $EXTRA_ARGS
 
-      - name: Upload remapped jar to release
+      - name: Upload jars to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.release.outputs.TAG }}
-          files: build/libs/${{ env.ARCHIVES_BASE_NAME }}-${{ needs.release.outputs.TAG }}-*.jar
+          files: loader-${{ matrix.loader }}/build/libs/**/*.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Write release notes to file
         run: echo "${{ needs.release.outputs.notes }}" > release-notes.md
 
       - name: Publish to Modrinth
+        if: matrix.loader == 'fabric'
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
           CHANGELOG: ${{ needs.release.outputs.notes }}
-        run: ./gradlew modrinth -Pminecraft_version=${{ matrix.mc_version }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }}
+        run: |
+          ./gradlew :loader-fabric:modrinth -PmcVersion=${{ matrix.mcVersion }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }} ${{ join(matrix.args, ' ') }}
 
   update-description:
     runs-on: ubuntu-latest

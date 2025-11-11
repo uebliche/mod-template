@@ -1,10 +1,74 @@
 plugins {
-    id 'systems.manifold.manifold-gradle-plugin' version "${manifold_plugin_version}"
-    id 'fabric-loom' version "${loom_version}"
-    id 'maven-publish'
-    alias(libs.plugins.shadow)
-    alias(libs.plugins.minotaur)
-    alias(libs.plugins.blossom)
+    id 'base'
 }
 
-apply from: 'build.main.gradle'
+def parseMcVersionNumber = { String version ->
+    if (!version) {
+        return null
+    }
+    def parts = version.tokenize('.').collect { it as int }
+    while (parts.size() < 3) {
+        parts << 0
+    }
+    return parts[0] * 10000 + parts[1] * 100 + parts[2]
+}
+
+def determineJavaMajor = { String mcVersion ->
+    def numeric = parseMcVersionNumber(mcVersion)
+    if (numeric == null) {
+        return 21
+    }
+    if (numeric >= parseMcVersionNumber("1.21.0")) return 21
+    if (numeric >= parseMcVersionNumber("1.20.0")) return 17
+    if (numeric >= parseMcVersionNumber("1.17.0")) return 17
+    return 17
+}
+
+def resolveMinecraftVersion = { Project project ->
+    def candidates = [
+            project.findProperty("mcVersion"),
+            project.findProperty("minecraft_version"),
+            project.rootProject.findProperty("mcVersion"),
+            project.rootProject.findProperty("minecraft_version")
+    ]
+    candidates.find { it }?.toString()
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    repositories {
+        mavenCentral()
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        maven {
+            name = 'NeoForged'
+            url = 'https://maven.neoforged.net/releases'
+        }
+        maven {
+            url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1"
+        }
+    }
+
+    afterEvaluate { proj ->
+        def javaExt = proj.extensions.findByType(JavaPluginExtension)
+        if (javaExt != null) {
+            def mcVersion = resolveMinecraftVersion(proj)
+            def targetMajor = determineJavaMajor(mcVersion)
+            def compilerMajor = Math.max(targetMajor ?: 21, 21)
+            javaExt.toolchain.languageVersion = org.gradle.jvm.toolchain.JavaLanguageVersion.of(compilerMajor)
+            proj.tasks.withType(JavaCompile).configureEach {
+                options.encoding = "UTF-8"
+                if (targetMajor != null) {
+                    options.release = targetMajor
+                }
+            }
+        } else {
+            proj.tasks.withType(JavaCompile).configureEach {
+                options.encoding = "UTF-8"
+            }
+        }
+    }
+}

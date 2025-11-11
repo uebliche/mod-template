@@ -1,5 +1,5 @@
 <!-- modrinth_exclude.start -->
-# Mod-template
+# Mod-template (multi-loader)
 
 <!-- build_test.start -->
 ![Test 1.21.8](https://img.shields.io/badge/1.21.8-success-brightgreen?style=flat) ![Test 1.21.7](https://img.shields.io/badge/1.21.7-success-brightgreen?style=flat) ![Test 1.21.6](https://img.shields.io/badge/1.21.6-success-brightgreen?style=flat) ![Test 1.21.5](https://img.shields.io/badge/1.21.5-success-brightgreen?style=flat) ![Test 1.21.4](https://img.shields.io/badge/1.21.4-success-brightgreen?style=flat) ![Test 1.21.3](https://img.shields.io/badge/1.21.3-success-brightgreen?style=flat) ![Test 1.21.2](https://img.shields.io/badge/1.21.2-success-brightgreen?style=flat) ![Test 1.21.1](https://img.shields.io/badge/1.21.1-success-brightgreen?style=flat) ![Test 1.21](https://img.shields.io/badge/1.21-success-brightgreen?style=flat) ![Test 1.20.6](https://img.shields.io/badge/1.20.6-success-brightgreen?style=flat) ![Test 1.20.5](https://img.shields.io/badge/1.20.5-success-brightgreen?style=flat) ![Test 1.20.4](https://img.shields.io/badge/1.20.4-success-brightgreen?style=flat) ![Test 1.20.3](https://img.shields.io/badge/1.20.3-success-brightgreen?style=flat) ![Test 1.20.2](https://img.shields.io/badge/1.20.2-success-brightgreen?style=flat) ![Test 1.20.1](https://img.shields.io/badge/1.20.1-success-brightgreen?style=flat) ![Test 1.20](https://img.shields.io/badge/1.20-success-brightgreen?style=flat) ![Test 1.19.4](https://img.shields.io/badge/1.19.4-success-brightgreen?style=flat) ![Test 1.19.3](https://img.shields.io/badge/1.19.3-success-brightgreen?style=flat) ![Test 1.19.2](https://img.shields.io/badge/1.19.2-success-brightgreen?style=flat) ![Test 1.19.1](https://img.shields.io/badge/1.19.1-success-brightgreen?style=flat) ![Test 1.19](https://img.shields.io/badge/1.19-success-brightgreen?style=flat) ![Test 1.18.2](https://img.shields.io/badge/1.18.2-success-brightgreen?style=flat) ![Test 1.18](https://img.shields.io/badge/1.18-success-brightgreen?style=flat) 
@@ -7,8 +7,16 @@
 <!-- modrinth_exclude.end -->
 ## Project Description
 
-This repository provides a minimal template for creating Fabric mods.
-It sets up Manifold, Loom and common project scaffolding so you can focus on writing game logic instead of build tooling.
+This repository now demonstrates a multi-loader layout:
+
+```
+mod-template/
+├── common/           # shared Java-only logic (no loader APIs)
+├── loader-fabric/    # Fabric/Loom project, applies build.main.gradle
+└── loader-forge/     # NeoForge project powered by ModDevGradle
+```
+
+Use `common` for gameplay/state code, and keep loader shims thin.
 
 ## Prerequisites
 
@@ -19,13 +27,25 @@ Gradle is provided via the wrapper script included in this repository.
 
 ## Build & Run
 
-Clone the repository and invoke the build:
+Clone the repository and invoke the build for a specific loader/version:
 
 ```bash
-./gradlew build
+# Fabric 1.21.1
+./gradlew :loader-fabric:build -PmcVersion=1.21.1
+
+# NeoForge 1.21.10
+./gradlew :loader-forge:runClient -PmcVersion=1.21.10
 ```
 
-The resulting mod jar will be placed in `build/libs`.
+Use `mods/mod-template/build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
+`versions.matrix.json`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version.
+
+### NeoForge specifics
+
+- Supported NeoForge/Minecraft targets live in `versions.matrix.json`. Each entry only needs the `mc` version; the build resolves both the matching NeoForge artifact and a compatible loader range automatically. Add optional fields (`neoForge`, `loaderVersionRange`, `properties`) only if you need to override the defaults.
+- Fabric targets default to the stable Minecraft releases at or above `buildFromVersion` (from `gradle.properties`). Add entries under the `fabric` key in `versions.matrix.json` only when you need to pin/skip specific releases; otherwise the automation derives the list for you.
+- When adding another Minecraft/NeoForge pair, drop a new JSON object into the `forge` list. Optional `properties` can pass extra `-P` flags to Gradle builds (used by the CI matrix and the `build_all.*` scripts).
+- Local dev uses ModDevGradle’s `forgeclientdev` target: `./gradlew :loader-forge:runClient -PmcVersion=<version>` boots with the shared `common` code already on the classpath.
 
 ## Updating build.main.gradle
 
@@ -40,9 +60,8 @@ Commit the refreshed file to keep the template in sync with upstream.
 
 ## Customisation
 
-Adjust the mod id, name and other metadata in `gradle.properties`.
-Resource files such as textures, lang files and data packs live under `src/main/resources`.
-Rename the `assets/mod-template` folder to match your mod id when customising.
+Adjust shared metadata in `gradle.properties`. Loader-specific files live under
+their respective subprojects (e.g. `loader-fabric/src/main/resources/fabric.mod.json`).
 
 ## License
 

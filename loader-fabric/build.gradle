@@ -1,0 +1,14 @@
+plugins {
+    id 'systems.manifold.manifold-gradle-plugin' version "${manifold_plugin_version}"
+    id 'fabric-loom' version "${loom_version}"
+    id 'maven-publish'
+    alias(libs.plugins.shadow)
+    alias(libs.plugins.minotaur)
+    alias(libs.plugins.blossom)
+}
+
+apply from: rootProject.file('build.main.gradle')
+
+dependencies {
+    implementation project(':common')
+}

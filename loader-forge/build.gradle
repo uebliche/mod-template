@@ -1,0 +1,204 @@
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+import org.gradle.jvm.toolchain.JavaLanguageVersion
+import org.gradle.util.VersionNumber
+
+plugins {
+    id 'net.neoforged.moddev' version "${neoforge_gradle_version}"
+    id 'maven-publish'
+}
+
+def forgeTaskRequested = gradle.startParameter.taskRequests.any { request ->
+    request.args.any { arg ->
+        arg.contains("loader-forge")
+    }
+}
+def skipForge = project.findProperty("skipForge")?.toString()?.toBoolean() ?: false
+def forceForge = project.findProperty("forceForge")?.toString()?.toBoolean() ?: false
+
+if ((skipForge || !forgeTaskRequested) && !forceForge) {
+    logger.lifecycle("Skipping loader-forge configuration (no loader-forge tasks requested)")
+    return
+}
+
+// Ensure we can reference the shared common source set when wiring NeoForge mods
+evaluationDependsOn(':common')
+
+group = project.maven_group
+version = project.findProperty("tag") ?: "0.0.0-dev"
+
+base {
+    archivesName = project.archives_base_name
+}
+
+java {
+    withSourcesJar()
+}
+
+def parseMcVersionNumber = { String version ->
+    if (!version) {
+        return null
+    }
+    def parts = version.tokenize('.').collect { it as int }
+    while (parts.size() < 3) {
+        parts << 0
+    }
+    parts[0] * 10000 + parts[1] * 100 + parts[2]
+}
+
+def determineJavaMajor = { String mcVersion ->
+    def numeric = parseMcVersionNumber(mcVersion)
+    if (numeric == null) {
+        return 21
+    }
+    if (numeric >= parseMcVersionNumber("1.21.0")) return 21
+    return 17
+}
+
+dependencies {
+    implementation project(':common')
+}
+
+def matrixFile = new File(rootProject.projectDir, "versions.matrix.json")
+if (!matrixFile.exists()) {
+    throw new GradleException("Missing versions.matrix.json in ${rootProject.projectDir}")
+}
+
+def matrix = new JsonSlurper().parseText(matrixFile.text)
+def forgeEntries = (matrix.forge ?: []) as List
+
+def requestedMcVersion = (project.hasProperty("mcVersion") ? project.property("mcVersion") : project.minecraft_version).toString()
+def javaMajor = determineJavaMajor(requestedMcVersion)
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(javaMajor)
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = javaMajor
+}
+
+def resolvedRaw = forgeEntries.find { entry ->
+    if (entry instanceof Map) {
+        def mc = entry.mc ?: entry.mcVersion
+        if (!mc) return false
+        return mc == requestedMcVersion
+    }
+    return entry == requestedMcVersion
+}
+
+if (resolvedRaw == null) {
+    throw new GradleException("No NeoForge metadata found for Minecraft ${requestedMcVersion}. Update versions.matrix.json -> forge[].")
+}
+
+if (!(resolvedRaw instanceof Map)) {
+    throw new GradleException("versions.matrix.json entry for Minecraft ${requestedMcVersion} must be an object that declares 'neoForge'.")
+}
+
+def resolvedEntry = resolvedRaw as Map<String, ?>
+
+if (resolvedEntry.enabled == Boolean.FALSE) {
+    def reason = resolvedEntry.reason ?: "disabled"
+    throw new GradleException("NeoForge ${requestedMcVersion} is disabled: ${reason}")
+}
+
+def loadNeoForgeMetadata = {
+    if (!rootProject.ext.has('cachedNeoForgeVersions')) {
+        def metadataUrl = new URL("https://maven.neoforged.net/releases/net/neoforged/neoforge/maven-metadata.xml")
+        rootProject.logger.lifecycle("Downloading NeoForge metadata from ${metadataUrl}")
+        def xmlText = metadataUrl.text
+        def xml = new XmlSlurper().parseText(xmlText)
+        rootProject.ext.cachedNeoForgeVersions = xml.versioning.versions.version*.text()
+        if (!rootProject.ext.cachedNeoForgeVersions) {
+            throw new GradleException("Failed to load NeoForge versions from ${metadataUrl}")
+        }
+    }
+    rootProject.ext.cachedNeoForgeVersions
+}
+
+def resolveNeoForgeVersion = { String mcVersion ->
+    if (project.hasProperty("neoForgeVersion")) {
+        return project.property("neoForgeVersion").toString()
+    }
+    def explicit = resolvedEntry.neoForge ?: resolvedEntry.neoforge ?: resolvedEntry.neoForgeVersion
+    if (explicit) {
+        return explicit.toString()
+    }
+
+    def parts = mcVersion.tokenize('.').collect { it as int }
+    if (parts.size() < 2) {
+        throw new GradleException("Cannot derive NeoForge version for Minecraft ${mcVersion}")
+    }
+    def suffix = parts.subList(1, parts.size()).collect { it.toString() }
+    if (suffix.size() == 1) {
+        suffix << "0"
+    }
+    def prefix = suffix.join('.')
+    def matching = loadNeoForgeMetadata().findAll { it.startsWith(prefix) }
+    if (matching.isEmpty()) {
+        throw new GradleException("No NeoForge version matching prefix ${prefix} (derived from Minecraft ${mcVersion})")
+    }
+    return matching.max { VersionNumber.parse(it) }
+}
+
+def neoForgeVersion = resolveNeoForgeVersion(requestedMcVersion)
+
+def deriveLoaderVersionRange = {
+    if (resolvedEntry.loaderVersionRange ?: resolvedEntry.loaderRange) {
+        return (resolvedEntry.loaderVersionRange ?: resolvedEntry.loaderRange).toString()
+    }
+    def parts = neoForgeVersion.tokenize('.')
+    def major = parts[0].toInteger()
+    def upperBound = major + 1
+    return "[4,${upperBound})"
+}
+
+def loaderVersionRange = deriveLoaderVersionRange()
+
+def modId = (project.findProperty('mod_id') ?: 'modtemplate').toString()
+
+def runDir = project.layout.projectDirectory.dir('run')
+
+def expandedProperties = [
+        modId                : modId,
+        modVersion           : project.version.toString(),
+        minecraftVersion     : requestedMcVersion,
+        neoforgeVersionRange : loaderVersionRange
+]
+
+neoForge {
+    version = neoForgeVersion
+
+    runs {
+        configureEach {
+            systemProperty 'mod.mcVersion', requestedMcVersion
+        }
+        client {
+            client()
+            logLevel = org.slf4j.event.Level.INFO
+            gameDirectory = runDir.dir("client-${requestedMcVersion}").asFile
+        }
+        server {
+            server()
+            gameDirectory = runDir.dir("server-${requestedMcVersion}").asFile
+        }
+        data {
+            data()
+            gameDirectory = runDir.dir("data-${requestedMcVersion}").asFile
+        }
+    }
+
+    mods {
+        create(modId) {
+            sourceSet sourceSets.main
+            sourceSet project(':common').sourceSets.main
+        }
+    }
+}
+
+tasks.withType(ProcessResources).configureEach {
+    inputs.properties(expandedProperties)
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand(expandedProperties)
+    }
+}

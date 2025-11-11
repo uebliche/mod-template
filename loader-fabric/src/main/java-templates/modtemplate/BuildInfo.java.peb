@@ -1,0 +1,23 @@
+package modtemplate;
+
+public final class BuildInfo {
+    private static final String COMMIT = "{{ COMMIT }}";
+    private static final String BRANCH = "{{ BRANCH }}";
+
+    private static final String GROUP = "{{ GROUP }}";
+    private static final String ARTIFACT = "{{ ARTIFACT }}";
+    private static final String VERSION = "{{ VERSION }}";
+
+    private static final String MC_VERSION = "{{ MC_VERSION }}";
+    private static final String VERSION_TYPE = "{{ VERSION_TYPE }}";
+
+    public static String commit() { return COMMIT; }
+    public static String branch() { return BRANCH; }
+
+    public static String group() { return GROUP; }
+    public static String artifact() { return ARTIFACT; }
+    public static String version() { return VERSION; }
+
+    public static String mcVersion() { return MC_VERSION; }
+    public static String versionType() { return VERSION_TYPE; }
+}
