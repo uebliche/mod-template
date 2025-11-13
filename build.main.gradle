@@ -33,6 +33,22 @@ def isDebugMode() {
     return System.getenv("DEBUG")?.toBoolean() ?: false
 }
 
+def fetchLatestFabricLoaderVersion() {
+    if (rootProject.ext.has('latestFabricLoaderVersion')) {
+        return rootProject.ext.latestFabricLoaderVersion
+    }
+    try {
+        def loaderMeta = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader"))
+        def latestStable = loaderMeta.find { it.stable }
+        def detected = latestStable?.version ?: loaderMeta[0]?.version ?: "0.18.0"
+        rootProject.ext.latestFabricLoaderVersion = detected
+    } catch (Exception ex) {
+        println "⚠️  Failed to retrieve latest Fabric loader metadata: ${ex.message}; falling back to 0.18.0"
+        rootProject.ext.latestFabricLoaderVersion = "0.18.0"
+    }
+    return rootProject.ext.latestFabricLoaderVersion
+}
+
 // -------------------- VERSION HANDLING --------------------
 def generateMcVersionMacros(List<String> versions, int selectedIndex) {
     def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
@@ -173,9 +189,8 @@ def resolveFabricVersions(String mcVersion) {
         println "⚠️  Failed to resolve Fabric versions dynamically: ${ex.message}"
         def slug = mcVersion.replace('.', '_')
         def fallbackLoader = project.findProperty("fabric_loader_version_${slug}") ?:
-                project.findProperty("fabric_loader_version") ?: "0.16.9"
-        def fallbackApi = project.findProperty("fabric_api_version_${slug}") ?:
-                project.findProperty("fabric_api_version") ?: "0.100.0+${mcVersion}"
+                project.findProperty("fabric_loader_version") ?: fetchLatestFabricLoaderVersion()
+        def fallbackApi = "0.100.0+${mcVersion}"
         println "   Falling back to loader=${fallbackLoader}, api=${fallbackApi}"
         return [loader: fallbackLoader, api: fallbackApi]
     }

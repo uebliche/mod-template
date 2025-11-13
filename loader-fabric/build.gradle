@@ -1,6 +1,38 @@
+import groovy.xml.XmlSlurper
+
+buildscript {
+    ext.computeFabricLoomVersion = { Project proj ->
+        if (proj.hasProperty("loom_version") && proj.property("loom_version")?.toString()?.trim()) {
+            return proj.property("loom_version").toString().trim()
+        }
+        if (proj.rootProject.ext.has('latestFabricLoomVersion')) {
+            return proj.rootProject.ext.latestFabricLoomVersion
+        }
+        try {
+            def metadataText = new URL("https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml").text
+            def metadata = new XmlSlurper().parseText(metadataText)
+            def versions = metadata.versioning.versions.version*.text()
+            def candidate = metadata.versioning.release?.text()
+            if (!candidate || candidate.isBlank() || candidate.toLowerCase().contains("snapshot")) {
+                candidate = versions.reverse().find { v -> v && !v.toLowerCase().contains("snapshot") }
+            }
+            if (!candidate || candidate.isBlank()) {
+                candidate = metadata.versioning.latest?.text()
+            }
+            candidate = candidate ?: "1.6.22"
+            proj.rootProject.ext.latestFabricLoomVersion = candidate
+        } catch (Exception ex) {
+            println "⚠️  Failed to fetch latest Fabric Loom version: ${ex.message}; falling back to 1.6.22"
+            proj.rootProject.ext.latestFabricLoomVersion = "1.6.22"
+        }
+        return proj.rootProject.ext.latestFabricLoomVersion
+    }
+    ext.fabricLoomVersion = computeFabricLoomVersion(project)
+}
+
 plugins {
     id 'systems.manifold.manifold-gradle-plugin' version "${manifold_plugin_version}"
-    id 'fabric-loom' version "${loom_version}"
+    id 'fabric-loom' version "${fabricLoomVersion}"
     id 'maven-publish'
     alias(libs.plugins.shadow)
     alias(libs.plugins.minotaur)
