@@ -187,9 +187,7 @@ def resolveFabricVersions(String mcVersion) {
         return [loader: loader, api: api]
     } catch (Exception ex) {
         println "⚠️  Failed to resolve Fabric versions dynamically: ${ex.message}"
-        def slug = mcVersion.replace('.', '_')
-        def fallbackLoader = project.findProperty("fabric_loader_version_${slug}") ?:
-                project.findProperty("fabric_loader_version") ?: fetchLatestFabricLoaderVersion()
+        def fallbackLoader = project.findProperty("fabric_loader_version") ?: fetchLatestFabricLoaderVersion()
         def fallbackApi = "0.100.0+${mcVersion}"
         println "   Falling back to loader=${fallbackLoader}, api=${fallbackApi}"
         return [loader: fallbackLoader, api: fallbackApi]
