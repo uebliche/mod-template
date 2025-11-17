@@ -9,7 +9,7 @@ buildscript {
             return proj.rootProject.ext.latestFabricLoomVersion
         }
         try {
-            def metadataText = new URL("https://maven.fabricmc.net/net/fabricmc/fabric-loom/maven-metadata.xml").text
+            def metadataText = new URL("https://plugins.gradle.org/m2/net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin/maven-metadata.xml").text
             def metadata = new XmlSlurper().parseText(metadataText)
             def versions = metadata.versioning.versions.version*.text()
             def candidate = metadata.versioning.release?.text()
@@ -19,11 +19,11 @@ buildscript {
             if (!candidate || candidate.isBlank()) {
                 candidate = metadata.versioning.latest?.text()
             }
-            candidate = candidate ?: "1.6.22"
+            candidate = candidate ?: "1.13.4"
             proj.rootProject.ext.latestFabricLoomVersion = candidate
         } catch (Exception ex) {
-            println "⚠️  Failed to fetch latest Fabric Loom version: ${ex.message}; falling back to 1.6.22"
-            proj.rootProject.ext.latestFabricLoomVersion = "1.6.22"
+            println "⚠️  Failed to fetch latest Fabric Loom version: ${ex.message}; falling back to 1.13.4"
+            proj.rootProject.ext.latestFabricLoomVersion = "1.13.4"
         }
         return proj.rootProject.ext.latestFabricLoomVersion
     }
