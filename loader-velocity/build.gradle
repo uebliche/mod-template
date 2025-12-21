@@ -1,0 +1,100 @@
+import groovy.json.JsonOutput
+import org.gradle.api.artifacts.VersionCatalogsExtension
+
+plugins {
+    id 'java'
+    id 'maven-publish'
+    alias(libs.plugins.blossom)
+}
+
+evaluationDependsOn(':common')
+
+group = project.maven_group
+version = project.findProperty("tag") ?: "dev"
+
+base {
+    archivesName = project.archives_base_name
+}
+
+def libsCatalog = project.extensions.findByType(VersionCatalogsExtension).named("libs")
+def defaultVelocityApi = libsCatalog.findVersion("velocity_api").get().requiredVersion
+def velocityApiVersion = (project.findProperty("mcVersion")
+        ?: project.findProperty("velocity_api_version")
+        ?: defaultVelocityApi).toString()
+def velocityPluginId = (project.findProperty("mod_id") ?: project.archives_base_name).toString()
+
+java {
+    withSourcesJar()
+}
+
+dependencies {
+    compileOnly "com.velocitypowered:velocity-api:${velocityApiVersion}"
+    annotationProcessor "com.velocitypowered:velocity-api:${velocityApiVersion}"
+    compileOnly libs.slf4j.api
+    implementation project(':common')
+}
+
+sourceSets {
+    main {
+        blossom {
+            javaSources {
+                property("MOD_ID", velocityPluginId)
+            }
+        }
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+def collectAuthors = {
+    def names = []
+    try {
+        def proc = "git log --format=%aN".execute(null, rootProject.projectDir)
+        proc.in.eachLine { line ->
+            def name = line.trim().replaceAll(/^'+|'+$/, "")
+            if (name && !names.contains(name)) {
+                names << name
+            }
+        }
+    } catch (Exception ignored) {
+        // best-effort only
+    }
+    if (names.isEmpty()) {
+        names << "Unknown"
+    }
+    names
+}
+
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = "UTF-8"
+    filesMatching("velocity-plugin.json") {
+        def pluginId = project.findProperty("mod_id") ?: project.name.toLowerCase()
+        def defaultName = project.hasProperty("mod_name")
+                ? project.mod_name
+                : project.archives_base_name.tokenize(' _-').collect { it.capitalize() }.join(' ')
+        def mainClass = project.findProperty("velocity_main_class") ?: "modtemplate.velocity.VelocityModTemplatePlugin"
+        def authorsJson = JsonOutput.toJson(collectAuthors())
+        expand([
+                plugin_id          : pluginId,
+                plugin_name        : defaultName,
+                plugin_version     : project.version,
+                plugin_description : project.findProperty("description") ?: "",
+                plugin_url         : project.findProperty("homepage") ?: "",
+                plugin_main_class  : mainClass,
+                plugin_authors     : authorsJson
+        ])
+    }
+}
+
+jar {
+    from(project(":common").sourceSets.main.output)
+    manifest {
+        attributes(
+                "Implementation-Title": project.name,
+                "Implementation-Version": project.version,
+                "Implementation-Vendor": project.group
+        )
+    }
+}

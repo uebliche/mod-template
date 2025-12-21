@@ -1,0 +1,7 @@
+name: ${plugin_name}
+main: ${plugin_main_class}
+version: ${plugin_version}
+api-version: ${plugin_api_version}
+description: ${plugin_description}
+website: ${plugin_website}
+authors: [${plugin_authors}]

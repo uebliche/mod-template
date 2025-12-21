@@ -13,7 +13,9 @@ This repository now demonstrates a multi-loader layout:
 mod-template/
 ├── common/           # shared Java-only logic (no loader APIs)
 ├── loader-fabric/    # Fabric/Loom project, applies build.main.gradle
-└── loader-forge/     # NeoForge project powered by ModDevGradle
+├── loader-forge/     # NeoForge project powered by ModDevGradle
+├── loader-paper/     # Paper plugin (Paperweight userdev)
+└── loader-velocity/  # Velocity proxy plugin
 ```
 
 Use `common` for gameplay/state code, and keep loader shims thin.
@@ -35,10 +37,16 @@ Clone the repository and invoke the build for a specific loader/version:
 
 # NeoForge 1.21.10
 ./gradlew :loader-forge:runClient -PmcVersion=1.21.10
+
+# Paper 1.21.1
+./gradlew :loader-paper:reobfJar -PmcVersion=1.21.1
+
+# Velocity (API 3.3.0-SNAPSHOT)
+./gradlew :loader-velocity:build -PmcVersion=3.3.0-SNAPSHOT
 ```
 
 Use `mods/mod-template/build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
-`versions.matrix.json`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version.
+`versions.matrix.json`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version. Paper and Velocity entries in the matrix use `mcVersion` as the Paper dev bundle target and the Velocity API version respectively.
 
 ### NeoForge specifics
 
@@ -61,7 +69,7 @@ Commit the refreshed file to keep the template in sync with upstream.
 ## Customisation
 
 Adjust shared metadata in `gradle.properties`. Loader-specific files live under
-their respective subprojects (e.g. `loader-fabric/src/main/resources/fabric.mod.json`).
+their respective subprojects (e.g. `loader-fabric/src/main/resources/fabric.mod.json`). Use `paper_main_class` / `velocity_main_class` in `gradle.properties` if you want custom plugin entry classes for the server/proxy loaders.
 
 ## License
 

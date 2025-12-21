@@ -13,4 +13,4 @@ pluginManagement {
 	}
 }
 
-include("common", "loader-fabric", "loader-forge")
+include("common", "loader-fabric", "loader-forge", "loader-paper", "loader-velocity")

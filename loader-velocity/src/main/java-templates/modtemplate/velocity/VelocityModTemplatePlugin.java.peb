@@ -1,0 +1,35 @@
+package modtemplate.velocity;
+
+import com.google.inject.Inject;
+import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
+import com.velocitypowered.api.plugin.Plugin;
+import com.velocitypowered.api.proxy.ProxyServer;
+import modtemplate.common.CommonEntrypoint;
+import org.slf4j.Logger;
+
+@Plugin(id = "{{ MOD_ID }}")
+public final class VelocityModTemplatePlugin {
+
+    public static final String ID = "{{ MOD_ID }}";
+
+    private final ProxyServer server;
+    private final Logger logger;
+
+    @Inject
+    public VelocityModTemplatePlugin(ProxyServer server, Logger logger) {
+        this.server = server;
+        this.logger = logger;
+    }
+
+    @Subscribe
+    public void onProxyInitialize(ProxyInitializeEvent event) {
+        var pluginVersion = server.getPluginManager()
+                .fromInstance(this)
+                .flatMap(container -> container.getDescription().getVersion())
+                .orElse("dev");
+
+        logger.info("Hello from Velocity {} (plugin v{})", server.getVersion().getName(), pluginVersion);
+        CommonEntrypoint.logHello("Velocity", server.getVersion().getName());
+    }
+}

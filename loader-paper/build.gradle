@@ -1,0 +1,97 @@
+plugins {
+    id 'java'
+    alias(libs.plugins.paperweight.userdev)
+    id 'maven-publish'
+}
+
+evaluationDependsOn(':common')
+
+group = project.maven_group
+version = project.findProperty("tag") ?: "dev"
+
+base {
+    archivesName = project.archives_base_name
+}
+
+def targetMcVersion = (project.findProperty("mcVersion")
+        ?: project.findProperty("minecraft_version")
+        ?: "1.21.1").toString()
+
+java {
+    withSourcesJar()
+}
+
+dependencies {
+    paperweightDevelopmentBundle("io.papermc.paper:dev-bundle:${targetMcVersion}-R0.1-SNAPSHOT")
+    implementation project(':common')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = "UTF-8"
+}
+
+def deriveApiVersion = { String mc ->
+    def parts = mc.tokenize('.')
+    if (parts.size() >= 2) {
+        return parts[0] + "." + parts[1]
+    }
+    return mc
+}
+
+def computeAuthors = {
+    def names = []
+    try {
+        def proc = "git log --format=%aN".execute(null, rootProject.projectDir)
+        proc.in.eachLine { line ->
+            def name = line.trim().replaceAll(/^'+|'+$/, "")
+            if (name && !names.contains(name)) {
+                names << name
+            }
+        }
+    } catch (Exception ignored) {
+        // best-effort
+    }
+    if (names.isEmpty()) {
+        names << "Unknown"
+    }
+    names
+}
+
+tasks.withType(ProcessResources).configureEach {
+    filteringCharset = "UTF-8"
+    filesMatching("plugin.yml") {
+        def defaultName = project.hasProperty("mod_name")
+                ? project.mod_name
+                : project.archives_base_name.tokenize(' _-').collect { it.capitalize() }.join(' ')
+        def pluginMain = project.findProperty("paper_main_class") ?: "modtemplate.paper.PaperModTemplatePlugin"
+        def authors = computeAuthors().collect { "\"${it.replace('\"', '\\\\\"')}\"" }.join(", ")
+        expand([
+                plugin_name        : defaultName,
+                plugin_main_class  : pluginMain,
+                plugin_version     : project.version,
+                plugin_api_version : deriveApiVersion(targetMcVersion),
+                plugin_description : project.findProperty("description") ?: "",
+                plugin_website     : project.findProperty("homepage") ?: "",
+                plugin_authors     : authors
+        ])
+    }
+}
+
+jar {
+    from(project(":common").sourceSets.main.output)
+    manifest {
+        attributes(
+                "Implementation-Title": project.name,
+                "Implementation-Version": project.version,
+                "Implementation-Vendor": project.group
+        )
+    }
+}
+
+tasks.named("assemble") {
+    dependsOn(tasks.named("reobfJar"))
+}
+
+tasks.named("build") {
+    dependsOn(tasks.named("reobfJar"))
+}

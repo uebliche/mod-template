@@ -6,7 +6,10 @@ def parseMcVersionNumber = { String version ->
     if (!version) {
         return null
     }
-    def parts = version.tokenize('.').collect { it as int }
+    def parts = version.tokenize('.').collect {
+        def numeric = it.replaceAll(/[^0-9].*/, "")
+        numeric ? numeric as int : 0
+    }
     while (parts.size() < 3) {
         parts << 0
     }
@@ -46,6 +49,18 @@ subprojects {
         maven {
             name = 'NeoForged'
             url = 'https://maven.neoforged.net/releases'
+        }
+        maven {
+            name = 'PaperMC'
+            url = 'https://repo.papermc.io/repository/maven-public/'
+        }
+        maven {
+            name = 'Velocity'
+            url = 'https://repo.velocitypowered.com/releases/'
+        }
+        maven {
+            name = 'VelocitySnapshots'
+            url = 'https://repo.velocitypowered.com/snapshots/'
         }
         maven {
             url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1"

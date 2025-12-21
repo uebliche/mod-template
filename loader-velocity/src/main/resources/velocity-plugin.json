@@ -1,0 +1,9 @@
+{
+  "id": "${plugin_id}",
+  "name": "${plugin_name}",
+  "version": "${plugin_version}",
+  "description": "${plugin_description}",
+  "authors": ${plugin_authors},
+  "url": "${plugin_url}",
+  "main": "${plugin_main_class}"
+}
