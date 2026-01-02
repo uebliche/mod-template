@@ -1,4 +1,5 @@
 import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
 import org.gradle.api.artifacts.VersionCatalogsExtension
 
 plugins {
@@ -48,6 +49,72 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
 }
 
+def resolveVelocityProxyVersion = {
+    def version = (project.findProperty("mcVersion")
+            ?: project.findProperty("velocity_proxy_version")
+            ?: defaultVelocityApi).toString()
+    return version
+}
+
+def velocityProxyVersion = resolveVelocityProxyVersion()
+def velocityRunDir = layout.buildDirectory.dir("run-velocity")
+def velocityJar = velocityRunDir.map { it.file("velocity-${velocityProxyVersion}.jar") }
+
+tasks.register("downloadVelocity") {
+    outputs.file(velocityJar)
+    doLast {
+        def runDirFile = velocityRunDir.get().asFile
+        runDirFile.mkdirs()
+        def target = velocityJar.get().asFile
+        if (target.exists()) {
+            return
+        }
+        def buildsUrl = new URL("https://api.papermc.io/v2/projects/velocity/versions/${velocityProxyVersion}/builds")
+        def builds = new JsonSlurper().parse(buildsUrl)
+        def lastBuild = builds?.builds?.last()
+        if (!lastBuild) {
+            throw new GradleException("No Velocity builds found for ${velocityProxyVersion}")
+        }
+        def buildNumber = lastBuild.build
+        def jarName = "velocity-${velocityProxyVersion}-${buildNumber}.jar"
+        def downloadUrl = "https://api.papermc.io/v2/projects/velocity/versions/${velocityProxyVersion}/builds/${buildNumber}/downloads/${jarName}"
+        logger.lifecycle("Downloading Velocity ${velocityProxyVersion} build ${buildNumber} from ${downloadUrl}")
+        target.bytes = new URL(downloadUrl).bytes
+    }
+}
+
+tasks.register("prepareVelocityRun") {
+    dependsOn(tasks.named("jar"))
+    doLast {
+        def runDirFile = velocityRunDir.get().asFile
+        def pluginsDir = new File(runDirFile, "plugins")
+        pluginsDir.mkdirs()
+        def pluginJar = tasks.named("jar").get().archiveFile.get().asFile
+        def target = new File(pluginsDir, pluginJar.name)
+        if (!target.exists() || target.lastModified() < pluginJar.lastModified()) {
+            target.bytes = pluginJar.bytes
+        }
+    }
+}
+
+tasks.register("runServer") {
+    dependsOn(tasks.named("downloadVelocity"), tasks.named("prepareVelocityRun"))
+    doLast {
+        def javaHome = System.getProperty("java.home")
+        def javaExec = new File(javaHome, "bin/java")
+        if (!javaExec.exists()) {
+            javaExec = new File(javaHome, "../bin/java")
+        }
+        def runDirFile = velocityRunDir.get().asFile
+        def jarFile = velocityJar.get().asFile
+        logger.lifecycle("Starting Velocity proxy with {}", jarFile.absolutePath)
+        exec {
+            workingDir = runDirFile
+            commandLine javaExec.absolutePath, "-jar", jarFile.absolutePath
+        }
+    }
+}
+
 def collectAuthors = {
     def names = []
     try {
@@ -90,6 +157,7 @@ tasks.withType(ProcessResources).configureEach {
 
 jar {
     from(project(":common").sourceSets.main.output)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     manifest {
         attributes(
                 "Implementation-Title": project.name,

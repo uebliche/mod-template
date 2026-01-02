@@ -54,14 +54,20 @@ subprojects {
             name = 'PaperMC'
             url = 'https://repo.papermc.io/repository/maven-public/'
         }
-        maven {
-            name = 'Velocity'
-            url = 'https://repo.velocitypowered.com/releases/'
+    maven {
+        name = 'Velocity'
+        url = 'https://repo.velocitypowered.com/releases/'
+        content {
+            includeGroup 'com.velocitypowered'
         }
-        maven {
-            name = 'VelocitySnapshots'
-            url = 'https://repo.velocitypowered.com/snapshots/'
+    }
+    maven {
+        name = 'VelocitySnapshots'
+        url = 'https://repo.velocitypowered.com/snapshots/'
+        content {
+            includeGroup 'com.velocitypowered'
         }
+    }
         maven {
             url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1"
         }

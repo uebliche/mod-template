@@ -12,7 +12,8 @@ buildscript {
             return proj.rootProject.ext.latestNeoForgeModdevVersion
         }
         try {
-            def metadata = new XmlSlurper().parse(new URL("https://maven.neoforged.net/releases/net/neoforged/moddev/net.neoforged.moddev.gradle.plugin/maven-metadata.xml"))
+            def metadataText = new URL("https://maven.neoforged.net/releases/net/neoforged/moddev/net.neoforged.moddev.gradle.plugin/maven-metadata.xml").text
+            def metadata = new XmlSlurper().parseText(metadataText)
             def candidate = metadata.versioning.release?.text()
             if (!candidate || candidate.isBlank()) {
                 candidate = metadata.versioning.latest?.text()
@@ -120,11 +121,14 @@ if (resolvedRaw == null) {
     throw new GradleException("No NeoForge metadata found for Minecraft ${requestedMcVersion}. Update versions.matrix.json -> forge[].")
 }
 
-if (!(resolvedRaw instanceof Map)) {
-    throw new GradleException("versions.matrix.json entry for Minecraft ${requestedMcVersion} must be an object that declares 'neoForge'.")
+def resolvedEntry = null
+if (resolvedRaw instanceof Map) {
+    resolvedEntry = resolvedRaw as Map<String, ?>
+} else if (resolvedRaw instanceof String) {
+    resolvedEntry = [mc: resolvedRaw]
+} else {
+    throw new GradleException("Unsupported forge entry type for Minecraft ${requestedMcVersion}.")
 }
-
-def resolvedEntry = resolvedRaw as Map<String, ?>
 
 if (resolvedEntry.enabled == Boolean.FALSE) {
     def reason = resolvedEntry.reason ?: "disabled"

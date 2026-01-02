@@ -13,4 +13,17 @@ pluginManagement {
 	}
 }
 
-include("common", "loader-fabric", "loader-forge", "loader-paper", "loader-velocity")
+def onlyLoader = gradle.startParameter.projectProperties.get("onlyLoader")?.trim()
+def loaders = ["fabric", "forge", "paper", "velocity"]
+if (onlyLoader) {
+	def normalized = onlyLoader.toLowerCase()
+	if (normalized.startsWith("loader-")) {
+		normalized = normalized.substring("loader-".length())
+	}
+	if (!loaders.contains(normalized)) {
+		throw new GradleException("Unknown onlyLoader '${onlyLoader}'. Expected one of: ${loaders}")
+	}
+	include("common", "loader-${normalized}")
+} else {
+	include("common", "loader-fabric", "loader-forge", "loader-paper", "loader-velocity")
+}

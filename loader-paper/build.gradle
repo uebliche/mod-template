@@ -1,3 +1,5 @@
+import groovy.json.JsonSlurper
+
 plugins {
     id 'java'
     alias(libs.plugins.paperweight.userdev)
@@ -94,4 +96,74 @@ tasks.named("assemble") {
 
 tasks.named("build") {
     dependsOn(tasks.named("reobfJar"))
+}
+
+def resolvePaperVersion = {
+    def version = (project.findProperty("mcVersion")
+            ?: project.findProperty("minecraft_version")
+            ?: targetMcVersion).toString()
+    return version
+}
+
+def paperVersion = resolvePaperVersion()
+def paperRunDir = layout.buildDirectory.dir("run-paper")
+def paperJar = paperRunDir.map { it.file("paper-${paperVersion}.jar") }
+
+tasks.register("downloadPaper") {
+    outputs.file(paperJar)
+    doLast {
+        def runDirFile = paperRunDir.get().asFile
+        runDirFile.mkdirs()
+        def target = paperJar.get().asFile
+        if (target.exists()) {
+            return
+        }
+        def buildsUrl = new URL("https://api.papermc.io/v2/projects/paper/versions/${paperVersion}/builds")
+        def builds = new JsonSlurper().parse(buildsUrl)
+        def lastBuild = builds?.builds?.last()
+        if (!lastBuild) {
+            throw new GradleException("No Paper builds found for ${paperVersion}")
+        }
+        def buildNumber = lastBuild.build
+        def jarName = "paper-${paperVersion}-${buildNumber}.jar"
+        def downloadUrl = "https://api.papermc.io/v2/projects/paper/versions/${paperVersion}/builds/${buildNumber}/downloads/${jarName}"
+        logger.lifecycle("Downloading Paper ${paperVersion} build ${buildNumber} from ${downloadUrl}")
+        target.bytes = new URL(downloadUrl).bytes
+    }
+}
+
+tasks.register("preparePaperRun") {
+    dependsOn(tasks.named("jar"))
+    doLast {
+        def runDirFile = paperRunDir.get().asFile
+        def pluginsDir = new File(runDirFile, "plugins")
+        pluginsDir.mkdirs()
+        def pluginJar = tasks.named("jar").get().archiveFile.get().asFile
+        def target = new File(pluginsDir, pluginJar.name)
+        if (!target.exists() || target.lastModified() < pluginJar.lastModified()) {
+            target.bytes = pluginJar.bytes
+        }
+        def eula = new File(runDirFile, "eula.txt")
+        if (!eula.exists()) {
+            eula.text = "eula=true\n"
+        }
+    }
+}
+
+tasks.register("runServer") {
+    dependsOn(tasks.named("downloadPaper"), tasks.named("preparePaperRun"))
+    doLast {
+        def javaHome = System.getProperty("java.home")
+        def javaExec = new File(javaHome, "bin/java")
+        if (!javaExec.exists()) {
+            javaExec = new File(javaHome, "../bin/java")
+        }
+        def runDirFile = paperRunDir.get().asFile
+        def jarFile = paperJar.get().asFile
+        logger.lifecycle("Starting Paper server with {}", jarFile.absolutePath)
+        exec {
+            workingDir = runDirFile
+            commandLine javaExec.absolutePath, "-jar", jarFile.absolutePath, "nogui"
+        }
+    }
 }

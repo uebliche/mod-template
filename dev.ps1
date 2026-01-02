@@ -1,7 +1,8 @@
 #!/usr/bin/env pwsh
 param(
     [string]$Loader,
-    [string]$Version
+    [string]$Version,
+    [string]$Mode
 )
 
 $ErrorActionPreference = 'Stop'
@@ -246,12 +247,51 @@ if (-not $selected) {
     throw "Version '$Version' not found for loader '$Loader'"
 }
 
+$modeOptionsByLoader = @{
+    fabric   = @("client","server","build")
+    forge    = @("client","server","build")
+    paper    = @("server","build")
+    velocity = @("server","build")
+}
+$defaultModeMap = @{
+    fabric   = "client"
+    forge    = "client"
+    paper    = "server"
+    velocity = "server"
+}
+$modeOptions = $modeOptionsByLoader[$Loader]
+if (-not $modeOptions) { $modeOptions = @("build") }
+
+if ($Mode) {
+    $Mode = $Mode.ToLower()
+    if (-not ($modeOptions -contains $Mode)) {
+        throw "Unknown mode '$Mode'. Expected one of: $($modeOptions -join ', ')"
+    }
+} else {
+    $defaultMode = $defaultModeMap[$Loader]
+    if (-not $defaultMode) { $defaultMode = $modeOptions[0] }
+    $Mode = Read-Choice -Prompt "Pick mode" -Options $modeOptions -Default $defaultMode
+}
+
+function Resolve-Task {
+    param([string]$Loader, [string]$Mode)
+    if ($Mode -eq "build") { return "build" }
+    if ($Loader -eq "fabric" -or $Loader -eq "forge") {
+        return ($Mode -eq "client" ? "runClient" : "runServer")
+    }
+    if ($Loader -eq "paper") { return "runServer" }
+    if ($Loader -eq "velocity") { return "runServer" }
+    return "build"
+}
+
+$task = Resolve-Task -Loader $Loader -Mode $Mode
+
 $gradlew = Join-Path $root 'gradlew.bat'
 if (-not (Test-Path $gradlew)) {
     $gradlew = Join-Path $root 'gradlew'
 }
 
-$cmd = @($gradlew, ":loader-$Loader:build", "-PmcVersion=$Version") + $selected.Args
+$cmd = @($gradlew, ":loader-$Loader:$task", "-PmcVersion=$Version", "-PonlyLoader=$Loader") + $selected.Args
 Write-Host "`n==> $($cmd -join ' ')" -ForegroundColor Cyan
 
 $originalPath = $env:Path

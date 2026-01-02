@@ -66,7 +66,10 @@ def generateMcVersionMacros(List<String> versions, int selectedIndex) {
 }
 
 static def parseVersion(String v) {
-    def parts = v.tokenize('.').collect { it.toInteger() }
+    def parts = v.tokenize('.').collect {
+        def numeric = it.replaceAll(/[^0-9].*/, "")
+        numeric ? numeric as int : 0
+    }
     while (parts.size() < 3) parts += 0
     return parts[0] * 10000 + parts[1] * 100 + parts[2]
 }
