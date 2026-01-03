@@ -8,41 +8,13 @@ echo "Running tests before push..."
 
 gradle_args=(--build-cache --parallel --configuration-cache --configuration-cache-problems=warn)
 
-if [[ -f "$repo_root/gradlew" ]]; then
-  if [[ -x "$repo_root/gradlew" ]]; then
-    ./gradlew test "${gradle_args[@]}"
-  else
-    echo "Note: gradlew is not executable; running via bash."
-    bash ./gradlew test "${gradle_args[@]}"
-  fi
-  exit 0
+mod_java_home="${MOD_TEMPLATE_JAVA_HOME:-/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home}"
+mod_java_env=(env)
+if [[ -d "$mod_java_home" ]]; then
+  mod_java_env+=(JAVA_HOME="$mod_java_home")
 fi
 
-if [[ -f "$repo_root/package.json" ]]; then
-  if [[ -f "$repo_root/pnpm-lock.yaml" ]]; then
-    if ! command -v pnpm >/dev/null 2>&1; then
-      echo "Error: pnpm is not installed."
-      exit 1
-    fi
-    pnpm run test --if-present
-    exit 0
-  fi
-
-  if [[ -f "$repo_root/yarn.lock" ]]; then
-    if ! command -v yarn >/dev/null 2>&1; then
-      echo "Error: yarn is not installed."
-      exit 1
-    fi
-    yarn test --if-present
-    exit 0
-  fi
-
-  if ! command -v npm >/dev/null 2>&1; then
-    echo "Error: npm is not installed."
-    exit 1
-  fi
-  npm run test --if-present
-  exit 0
-fi
-
-echo "No test configuration found; skipping."
+"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" -PonlyLoader=fabric
+"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" -PonlyLoader=velocity
+"${mod_java_env[@]}" ./gradlew :loader-forge:test "${gradle_args[@]}" -PonlyLoader=forge
+"${mod_java_env[@]}" ./gradlew :loader-paper:test "${gradle_args[@]}" -PonlyLoader=paper
