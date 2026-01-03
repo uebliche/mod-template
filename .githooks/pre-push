@@ -8,22 +8,13 @@ echo "Running tests before push..."
 
 gradle_args=(--build-cache --parallel)
 
-mc_version=""
-if [[ -f "$repo_root/gradle.properties" ]]; then
-  mc_version=$(grep -E '^minecraft_version=' "$repo_root/gradle.properties" | head -n1 | cut -d= -f2- | tr -d '\r')
-fi
-mc_prop=()
-if [[ -n "$mc_version" ]]; then
-  mc_prop=(-PmcVersion="$mc_version")
-fi
-
 mod_java_home="${MOD_TEMPLATE_JAVA_HOME:-/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home}"
 mod_java_env=(env)
 if [[ -d "$mod_java_home" ]]; then
   mod_java_env+=(JAVA_HOME="$mod_java_home")
 fi
 
-"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" "${mc_prop[@]}" -PonlyLoader=fabric
-"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" "${mc_prop[@]}" -PonlyLoader=velocity
-"${mod_java_env[@]}" ./gradlew :loader-forge:test "${gradle_args[@]}" "${mc_prop[@]}" -PonlyLoader=forge
-"${mod_java_env[@]}" ./gradlew :loader-paper:test "${gradle_args[@]}" "${mc_prop[@]}" -PonlyLoader=paper
+"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" -PonlyLoader=fabric
+"${mod_java_env[@]}" ./gradlew test "${gradle_args[@]}" -PonlyLoader=velocity
+"${mod_java_env[@]}" ./gradlew :loader-forge:test "${gradle_args[@]}" -PonlyLoader=forge
+"${mod_java_env[@]}" ./gradlew :loader-paper:test "${gradle_args[@]}" -PonlyLoader=paper
