@@ -6,7 +6,7 @@ cd "$repo_root"
 
 echo "Running tests before push..."
 
-gradle_args=(--build-cache --parallel --configuration-cache --configuration-cache-problems=warn)
+gradle_args=(--build-cache --parallel)
 
 mc_version=""
 if [[ -f "$repo_root/gradle.properties" ]]; then

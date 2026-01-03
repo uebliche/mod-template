@@ -35,6 +35,8 @@ def resolveMinecraftVersion = {
 
 project.ext.minecraft_version = resolveMinecraftVersion()
 
+def resolvedMinecraftVersion = project.minecraft_version
+
 group = project.maven_group
 
 base {
@@ -73,17 +75,17 @@ def fetchLatestFabricLoaderVersion() {
 }
 
 // -------------------- VERSION HANDLING --------------------
-def generateMcVersionMacros(List<String> versions, int selectedIndex) {
+def generateMcVersionMacros(List<String> versions, int selectedIndex, String mcVersion) {
     def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
     versions.eachWithIndex { v, i ->
         sb << "MC_${v.replace('.', '_')}=${i}\n"
         if (i == selectedIndex) sb << "MC_VER=${i}\n"
     }
     new File(project.projectDir, "build.properties").text = sb.toString()
-    println "📝 build.properties written with ${versions.size()} versions (MC_VER=${selectedIndex}) for Minecraft ${project.minecraft_version}."
+    println "📝 build.properties written with ${versions.size()} versions (MC_VER=${selectedIndex}) for Minecraft ${mcVersion}."
     println "Available versions: ${versions.join(', ')}"
     println "Selected version: ${versions[selectedIndex]} (index ${selectedIndex})"
-    println "Java version for Minecraft ${project.minecraft_version}: ${getJavaVersionForMinecraft(project.minecraft_version).majorVersion}"
+    println "Java version for Minecraft ${mcVersion}: ${getJavaVersionForMinecraft(mcVersion).majorVersion}"
     println "Build properties file written to: ${new File(project.projectDir, "build.properties").absolutePath}"
     println sb.toString()
 }
@@ -105,11 +107,11 @@ static def getJavaVersionForMinecraft(String mcVersion) {
     return JavaVersion.VERSION_17
 }
 
-def effectiveJavaVersion = getJavaVersionForMinecraft(project.minecraft_version)
+def effectiveJavaVersion = getJavaVersionForMinecraft(resolvedMinecraftVersion)
 
 tasks.register('generatePreprocessorDefinitions') {
     doLast {
-        def mcVersion = project.minecraft_version
+        def mcVersion = resolvedMinecraftVersion
         List<String> versions = []
         try {
             def parsed = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/game"))
@@ -159,7 +161,7 @@ tasks.withType(JavaCompile).configureEach {
                 macroArgs += "-A${k}=${v}"
             }
         }
-        def mcVer = project.minecraft_version
+        def mcVer = resolvedMinecraftVersion
         def versionInt = mcVer.tokenize('.').collect { it.padLeft(2, '0') }.join('').toInteger()
         println "🔧 Setting Manifold compiler arguments for Minecraft version ${mcVer} (int: ${versionInt})"
         options.compilerArgs.clear()
@@ -223,7 +225,7 @@ def resolveFabricVersions(String mcVersion) {
 // Resolve the loader and API version for the current Minecraft version
 // and store them in project properties for later use
 
-def resolved = resolveFabricVersions(project.minecraft_version)
+def resolved = resolveFabricVersions(resolvedMinecraftVersion)
 ext.loader_version = resolved.loader
 ext.fabric_version = resolved.api
 
@@ -232,17 +234,17 @@ ext.fabric_version = resolved.api
 
 dependencies {
     annotationProcessor libs.manifold // Manifold annotation processor
-    minecraft "com.mojang:minecraft:${project.minecraft_version}" // Minecraft main dependency
+    minecraft "com.mojang:minecraft:${resolvedMinecraftVersion}" // Minecraft main dependency
     mappings loom.officialMojangMappings() // Official Mojang mappings
     modImplementation "net.fabricmc:fabric-loader:${loader_version}" // Fabric loader
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}" // Fabric API
     modRuntimeOnly(libs.devauth.fabric) // DevAuth runtime mod
 
     // Add SLF4J logging dependencies for Minecraft 1.16
-    if (project.minecraft_version.startsWith("1.16")) {
+    if (resolvedMinecraftVersion.startsWith("1.16")) {
         implementation libs.slf4j.api
         runtimeOnly libs.slf4j.simple
-        println "📦 SLF4J enabled for Minecraft ${project.minecraft_version}"
+        println "📦 SLF4J enabled for Minecraft ${mcVersion}"
     }
 }
 
@@ -260,7 +262,7 @@ sourceSets {
                 property("GROUP", project.group.toString())
                 property("ARTIFACT", project.name)
                 property("VERSION", project.version.toString())
-                property("MC_VERSION", project.minecraft_version)
+                property("MC_VERSION", resolvedMinecraftVersion)
                 property("VERSION_TYPE", project.hasProperty("version_type") ? project.version_type : "dev")
             }
         }
@@ -366,7 +368,7 @@ processResources {
                 "mod_name"            : project.hasProperty("mod_name") ? project.mod_name : project.name.tokenize(' _-').collect { it.capitalize() }.join(' '),
                 "description"         : project.hasProperty("description") ? project.description : "",
                 "icon_path"           : project.hasProperty("icon_path") ? project.icon_path : "assets/${project.name}/icon.png",
-                "minecraft_version"   : project.hasProperty("minecraft_version") ? project.minecraft_version : "",
+                "minecraft_version"   : resolvedMinecraftVersion,
                 "fabricloader_version": project.hasProperty("loader_version") ? project.loader_version : "",
                 "license_type"        : project.hasProperty("license_type") ? project.license_type : "",
                 "java_version"        : effectiveJavaVersion.majorVersion,
@@ -444,7 +446,7 @@ modrinth {
     versionName = "${archives_base_name}-${minecraft_version}+${version}"
     versionType = project.hasProperty("version_type") ? project.version_type : "release"
     uploadFile = remapJar
-    gameVersions = ["${project.minecraft_version}"]
+    gameVersions = ["${resolvedMinecraftVersion}"]
     loaders = ["fabric"]
     dependencies {
         required.project "fabric-api"
