@@ -12,6 +12,14 @@ if (project.hasProperty("mcVersion")) {
     project.minecraft_version = project.mcVersion
 }
 
+if (!project.hasProperty("minecraft_version")) {
+    def resolved = project.findProperty("minecraft_version") ?: project.rootProject.findProperty("minecraft_version")
+    if (resolved == null) {
+        throw new GradleException("Missing minecraft_version in gradle.properties")
+    }
+    project.ext.minecraft_version = resolved
+}
+
 group = project.maven_group
 
 base {
