@@ -15,7 +15,9 @@ base {
     archivesName = project.archives_base_name
 }
 
-def targetMcVersion = (project.findProperty("mcVersion")
+def targetMcVersion = (project.findProperty("paper_mc_version")
+        ?: project.findProperty("paperVersion")
+        ?: project.findProperty("mcVersion")
         ?: project.findProperty("minecraft_version")
         ?: "1.21.1").toString()
 
@@ -24,7 +26,7 @@ java {
 }
 
 dependencies {
-    paperweightDevelopmentBundle("io.papermc.paper:dev-bundle:${targetMcVersion}-R0.1-SNAPSHOT")
+    paperweightDevelopmentBundle("io.papermc.paper:dev-bundle:${targetMcVersion}-R0.1-SNAPSHOT@zip")
     implementation project(':common')
 }
 
@@ -99,7 +101,9 @@ tasks.named("build") {
 }
 
 def resolvePaperVersion = {
-    def version = (project.findProperty("mcVersion")
+    def version = (project.findProperty("paper_mc_version")
+            ?: project.findProperty("paperVersion")
+            ?: project.findProperty("mcVersion")
             ?: project.findProperty("minecraft_version")
             ?: targetMcVersion).toString()
     return version
