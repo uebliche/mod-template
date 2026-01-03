@@ -45,8 +45,8 @@ Clone the repository and invoke the build for a specific loader/version:
 ./gradlew :loader-velocity:build -PmcVersion=3.3.0-SNAPSHOT
 ```
 
-Use `mods/mod-template/build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
-`versions.matrix.json`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version. Paper and Velocity entries in the matrix use `mcVersion` as the Paper dev bundle target and the Velocity API version respectively.
+Use `build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
+`versions.matrix.json`. In the Uebliche monorepo this lives at `template/mod-template/build_all.sh`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version. Paper and Velocity entries in the matrix use `mcVersion` as the Paper dev bundle target and the Velocity API version respectively.
 
 ### NeoForge specifics
 
