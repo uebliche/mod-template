@@ -137,7 +137,7 @@ tasks.register('generatePreprocessorDefinitions') {
             versions = versions.unique().sort { parseVersion(it) }
             index = versions.indexOf(mcVersion)
         }
-        project.ext.generateMcVersionMacros(versions, index, mcVersion)
+        project.ext.generateMcVersionMacros.call(versions, index, mcVersion)
     }
 }
 tasks.named("compileJava") { dependsOn generatePreprocessorDefinitions }
