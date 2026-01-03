@@ -132,7 +132,7 @@ tasks.register('generatePreprocessorDefinitions') {
         println "📝 build.properties written with ${versions.size()} versions (MC_VER=${index}) for Minecraft ${mcVersion}."
         println "Available versions: ${versions.join(', ')}"
         println "Selected version: ${versions[index]} (index ${index})"
-        println "Java version for Minecraft ${mcVersion}: ${getJavaVersionForMinecraft(mcVersion).majorVersion}"
+        println "Java version for Minecraft ${mcVersion}: ${effectiveJavaVersion.majorVersion}"
         println "Build properties file written to: ${new File(project.projectDir, "build.properties").absolutePath}"
         println sb.toString()
     }
