@@ -75,7 +75,7 @@ def fetchLatestFabricLoaderVersion() {
 }
 
 // -------------------- VERSION HANDLING --------------------
-ext.generateMcVersionMacros = { List<String> versions, int selectedIndex, String mcVersion ->
+def generateMcVersionMacros = { List<String> versions, int selectedIndex, String mcVersion ->
     def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
     versions.eachWithIndex { v, i ->
         sb << "MC_${v.replace('.', '_')}=${i}\n"
@@ -89,6 +89,7 @@ ext.generateMcVersionMacros = { List<String> versions, int selectedIndex, String
     println "Build properties file written to: ${new File(project.projectDir, "build.properties").absolutePath}"
     println sb.toString()
 }
+def macroGenerator = generateMcVersionMacros
 
 static def parseVersion(String v) {
     def parts = v.tokenize('.').collect {
@@ -137,7 +138,7 @@ tasks.register('generatePreprocessorDefinitions') {
             versions = versions.unique().sort { parseVersion(it) }
             index = versions.indexOf(mcVersion)
         }
-        project.ext.generateMcVersionMacros.call(versions, index, mcVersion)
+        macroGenerator.call(versions, index, mcVersion)
     }
 }
 tasks.named("compileJava") { dependsOn generatePreprocessorDefinitions }
