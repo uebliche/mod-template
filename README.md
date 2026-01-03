@@ -2,7 +2,7 @@
 # Mod-template (multi-loader)
 
 <!-- build_test.start -->
-![Test 1.21.10](https://img.shields.io/badge/1.21.10-failure-red?style=flat) ![Test 1.21.1](https://img.shields.io/badge/1.21.1-success-brightgreen?style=flat) ![Test 1.20.4](https://img.shields.io/badge/1.20.4-success-brightgreen?style=flat) ![Test 1.19.4](https://img.shields.io/badge/1.19.4-success-brightgreen?style=flat) 
+![Test 1.21.10](https://img.shields.io/badge/1.21.10-success-brightgreen?style=flat) ![Test 1.21.1](https://img.shields.io/badge/1.21.1-success-brightgreen?style=flat) ![Test 1.20.4](https://img.shields.io/badge/1.20.4-success-brightgreen?style=flat) ![Test 1.19.4](https://img.shields.io/badge/1.19.4-success-brightgreen?style=flat) 
 <!-- build_test.end -->
 <!-- modrinth_exclude.end -->
 ## Project Description
