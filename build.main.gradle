@@ -8,17 +8,32 @@ ext.cachedJdList = null
 
 project.version = project.hasProperty("tag") ? project.tag : "dev"
 
-if (project.hasProperty("mcVersion")) {
-    project.minecraft_version = project.mcVersion
-}
-
-if (!project.hasProperty("minecraft_version")) {
-    def resolved = project.findProperty("minecraft_version") ?: project.rootProject.findProperty("minecraft_version")
-    if (resolved == null) {
+def resolveMinecraftVersion = {
+    def candidates = [
+            project.findProperty("mcVersion"),
+            project.findProperty("minecraft_version"),
+            project.rootProject.findProperty("mcVersion"),
+            project.rootProject.findProperty("minecraft_version")
+    ]
+    def resolved = candidates.find { it }
+    if (!resolved) {
+        def propsFile = project.rootProject.file("gradle.properties")
+        if (propsFile.exists()) {
+            propsFile.eachLine { line ->
+                def trimmed = line?.trim()
+                if (trimmed?.startsWith("minecraft_version=")) {
+                    resolved = trimmed.substring("minecraft_version=".length())
+                }
+            }
+        }
+    }
+    if (!resolved) {
         throw new GradleException("Missing minecraft_version in gradle.properties")
     }
-    project.ext.minecraft_version = resolved
+    return resolved.toString().trim()
 }
+
+project.ext.minecraft_version = resolveMinecraftVersion()
 
 group = project.maven_group
 
