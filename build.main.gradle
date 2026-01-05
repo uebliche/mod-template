@@ -74,6 +74,53 @@ def fetchLatestFabricLoaderVersion() {
     return rootProject.ext.latestFabricLoaderVersion
 }
 
+def resolveLoaderCacheFile() {
+    def override = project.findProperty("loader_cache_file") ?: project.findProperty("global_loader_cache")
+    if (override != null && override.toString().trim()) {
+        return new File(override.toString().trim())
+    }
+    def local = new File(rootProject.projectDir, "loader.versions.cache.json")
+    if (local.exists()) {
+        return local
+    }
+    def parent = rootProject.projectDir.parentFile
+    if (parent != null) {
+        def parentCache = new File(parent, "loader.versions.cache.json")
+        if (parentCache.exists()) {
+            return parentCache
+        }
+    }
+    return local
+}
+
+def loadLocalLoaderCache() {
+    def cacheFile = resolveLoaderCacheFile()
+    if (!cacheFile.exists()) {
+        return [:]
+    }
+    try {
+        def parsed = new JsonSlurper().parse(cacheFile)
+        return parsed instanceof Map ? parsed : [:]
+    } catch (Exception ex) {
+        println "⚠️  Failed to read local loader cache: ${ex.message}"
+        return [:]
+    }
+}
+
+def findLocalFabricLoaderVersion(String mcVersion) {
+    try {
+        def cache = loadLocalLoaderCache()
+        def fabric = cache?.fabric
+        if (fabric instanceof Map && fabric.containsKey(mcVersion)) {
+            def value = fabric[mcVersion]
+            return value != null ? value.toString() : null
+        }
+    } catch (Exception ignored) {
+        return null
+    }
+    return null
+}
+
 // -------------------- VERSION HANDLING --------------------
 
 static def parseVersion(String v) {
@@ -182,8 +229,23 @@ def resolveFabricVersions(String mcVersion) {
 
     def jdList = project.ext.cachedJdList
 
-    // Get the loader version from Fabric meta API
-    def loader = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader/${mcVersion}"))[0].loader.version
+    def loaderOverride = project.findProperty("loader_version") ?: project.findProperty("fabric_loader_version")
+    def localLoaderVersion = null
+    def loader = null
+    if (loaderOverride != null && loaderOverride.toString().trim()) {
+        loader = loaderOverride.toString().trim()
+        println "🧩 Using Fabric loader override ${loader}"
+    } else {
+        localLoaderVersion = findLocalFabricLoaderVersion(mcVersion)
+        if (localLoaderVersion) {
+            loader = localLoaderVersion
+            println "🗃️ Using local loader cache ${loader} for Minecraft ${mcVersion}"
+        }
+    }
+    if (loader == null) {
+        // Get the loader version from Fabric meta API
+        loader = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader/${mcVersion}"))[0].loader.version
+    }
 
     // Helper function to parse version strings into comparable lists
     def parseVersion = { String str -> str.tokenize('.+-').collect { token -> token.isNumber() ? token.toInteger() : token } }
@@ -212,7 +274,8 @@ def resolveFabricVersions(String mcVersion) {
         return [loader: loader, api: api]
     } catch (Exception ex) {
         println "⚠️  Failed to resolve Fabric versions dynamically: ${ex.message}"
-        def fallbackLoader = project.findProperty("fabric_loader_version") ?: fetchLatestFabricLoaderVersion()
+        def fallbackLocal = findLocalFabricLoaderVersion(mcVersion)
+        def fallbackLoader = project.findProperty("fabric_loader_version") ?: (fallbackLocal ?: fetchLatestFabricLoaderVersion())
         def fallbackApi = "0.100.0+${mcVersion}"
         println "   Falling back to loader=${fallbackLoader}, api=${fallbackApi}"
         return [loader: fallbackLoader, api: fallbackApi]
