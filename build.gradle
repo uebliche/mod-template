@@ -1,3 +1,17 @@
+buildscript {
+    if (gradle.ext.has("mcmetaPluginAvailable") && gradle.ext.mcmetaPluginAvailable) {
+        repositories {
+            mavenCentral()
+        }
+        def mcmetaVersion = (project.findProperty("mcmetaPluginVersion")
+                ?: System.getenv("MCMETA_PLUGIN_VERSION")
+                ?: "0.1.0").toString()
+        dependencies {
+            classpath "net.uebliche:mcmeta-gradle:${mcmetaVersion}"
+        }
+    }
+}
+
 plugins {
     id 'base'
 }

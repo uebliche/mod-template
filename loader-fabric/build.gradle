@@ -1,44 +1,67 @@
-import groovy.xml.XmlSlurper
-
 buildscript {
+    configurations.classpath {
+        def pluginApiAttr = org.gradle.api.attributes.plugin.GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE
+        attributes.attribute(pluginApiAttr, project.objects.named(org.gradle.api.attributes.plugin.GradlePluginApiVersion, "9.2.0"))
+    }
     ext.computeFabricLoomVersion = { Project proj ->
-        if (proj.hasProperty("loom_version") && proj.property("loom_version")?.toString()?.trim()) {
-            return proj.property("loom_version").toString().trim()
-        }
-        if (proj.rootProject.ext.has('latestFabricLoomVersion')) {
-            return proj.rootProject.ext.latestFabricLoomVersion
-        }
-        try {
-            def metadataText = new URL("https://plugins.gradle.org/m2/net/fabricmc/fabric-loom/net.fabricmc.fabric-loom.gradle.plugin/maven-metadata.xml").text
-            def metadata = new XmlSlurper().parseText(metadataText)
-            def versions = metadata.versioning.versions.version*.text()
-            def candidate = metadata.versioning.release?.text()
-            if (!candidate || candidate.isBlank() || candidate.toLowerCase().contains("snapshot")) {
-                candidate = versions.reverse().find { v -> v && !v.toLowerCase().contains("snapshot") }
+        def versions = []
+        if (proj.rootProject.ext.has('mcmetaFabricLoomVersions')) {
+            def value = proj.rootProject.ext.mcmetaFabricLoomVersions
+            if (value instanceof Iterable) {
+                versions = value.collect { it.toString().trim() }.findAll { it }
             }
-            if (!candidate || candidate.isBlank()) {
-                candidate = metadata.versioning.latest?.text()
-            }
-            candidate = candidate ?: "1.13.4"
-            proj.rootProject.ext.latestFabricLoomVersion = candidate
-        } catch (Exception ex) {
-            println "⚠️  Failed to fetch latest Fabric Loom version: ${ex.message}; falling back to 1.13.4"
-            proj.rootProject.ext.latestFabricLoomVersion = "1.13.4"
         }
-        return proj.rootProject.ext.latestFabricLoomVersion
+        def stable = proj.rootProject.ext.has('mcmetaFabricLoomStableVersion')
+                ? proj.rootProject.ext.mcmetaFabricLoomStableVersion?.toString()?.trim()
+                : null
+        def snapshot = proj.rootProject.ext.has('mcmetaFabricLoomSnapshotVersion')
+                ? proj.rootProject.ext.mcmetaFabricLoomSnapshotVersion?.toString()?.trim()
+                : null
+        def candidate = null
+        if (!versions.isEmpty()) {
+            def gradleVersion = org.gradle.util.GradleVersion.current().version
+            def gradleMajor = (gradleVersion?.tokenize('.')?.first() ?: "0") as int
+            if (gradleMajor < 9) {
+                candidate = versions.find { !it.startsWith("1.15.") }
+            }
+            if (!candidate) {
+                candidate = versions[0]
+            }
+        }
+        if (!candidate) {
+            candidate = stable ?: snapshot
+        }
+        if (candidate != null && candidate.toString().trim()) {
+            return candidate.toString().trim()
+        }
+        throw new GradleException("mcmeta Fabric Loom version missing. Enable mcmeta and ensure loom data is published.")
     }
     ext.fabricLoomVersion = computeFabricLoomVersion(project)
+
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
+    }
+    dependencies {
+        classpath "net.fabricmc:fabric-loom:${fabricLoomVersion}"
+    }
 }
 
 plugins {
     id 'systems.manifold.manifold-gradle-plugin' version "${manifold_plugin_version}"
-    id 'fabric-loom' version "${fabricLoomVersion}"
     id 'maven-publish'
     alias(libs.plugins.shadow)
     alias(libs.plugins.minotaur)
     alias(libs.plugins.blossom)
 }
 
+apply plugin: 'fabric-loom'
 apply from: rootProject.file('build.main.gradle')
 
 dependencies {

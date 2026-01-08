@@ -4,41 +4,21 @@
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 
-ext.cachedJdList = null
-
 project.version = project.hasProperty("tag") ? project.tag : "dev"
 
+def requireMcmetaExtra(String key, String label) {
+    if (!project.rootProject.ext.has(key)) {
+        throw new GradleException("mcmeta missing ${label} (${key}). Enable the mcmeta plugin.")
+    }
+    def value = project.rootProject.ext.get(key)
+    if (value == null || !value.toString().trim()) {
+        throw new GradleException("mcmeta ${label} is empty (${key}).")
+    }
+    return value.toString().trim()
+}
+
 def resolveMinecraftVersion = {
-    def candidates = [
-            project.findProperty("mcVersion"),
-            project.findProperty("minecraft_version"),
-            project.rootProject.findProperty("mcVersion"),
-            project.rootProject.findProperty("minecraft_version")
-    ]
-    def resolved = candidates.find { it }
-    if (!resolved) {
-        def propsFile = project.rootProject.file("gradle.properties")
-        if (propsFile.exists()) {
-            propsFile.eachLine { line ->
-                def trimmed = line?.trim()
-                if (trimmed?.startsWith("minecraft_version=")) {
-                    resolved = trimmed.substring("minecraft_version=".length())
-                }
-            }
-        }
-    }
-    if (!resolved) {
-        if (project.rootProject.ext.has("mcmetaMinecraftVersion")) {
-            def mcmetaValue = project.rootProject.ext.mcmetaMinecraftVersion
-            if (mcmetaValue != null && mcmetaValue.toString().trim()) {
-                resolved = mcmetaValue
-            }
-        }
-    }
-    if (!resolved) {
-        throw new GradleException("Missing minecraft_version in gradle.properties")
-    }
-    return resolved.toString().trim()
+    requireMcmetaExtra("mcmetaMinecraftVersion", "minecraftVersion")
 }
 
 project.ext.minecraft_version = resolveMinecraftVersion()
@@ -51,82 +31,8 @@ base {
     archivesName = project.archives_base_name
 }
 
-def defaultFabricVersions = [
-        "1.14","1.14.1","1.14.2","1.14.3","1.14.4",
-        "1.15","1.15.1","1.15.2",
-        "1.16","1.16.1","1.16.2","1.16.3","1.16.4","1.16.5",
-        "1.17","1.17.1",
-        "1.18","1.18.1","1.18.2",
-        "1.19","1.19.1","1.19.2","1.19.3","1.19.4",
-        "1.20","1.20.1","1.20.2","1.20.3","1.20.4","1.20.5","1.20.6",
-        "1.21","1.21.1","1.21.2","1.21.3","1.21.4","1.21.5","1.21.6","1.21.7","1.21.8","1.21.9","1.21.10"
-]
-
 def isDebugMode() {
     return System.getenv("DEBUG")?.toBoolean() ?: false
-}
-
-def fetchLatestFabricLoaderVersion() {
-    if (rootProject.ext.has('latestFabricLoaderVersion')) {
-        return rootProject.ext.latestFabricLoaderVersion
-    }
-    try {
-        def loaderMeta = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader"))
-        def latestStable = loaderMeta.find { it.stable }
-        def detected = latestStable?.version ?: loaderMeta[0]?.version ?: "0.18.0"
-        rootProject.ext.latestFabricLoaderVersion = detected
-    } catch (Exception ex) {
-        println "⚠️  Failed to retrieve latest Fabric loader metadata: ${ex.message}; falling back to 0.18.0"
-        rootProject.ext.latestFabricLoaderVersion = "0.18.0"
-    }
-    return rootProject.ext.latestFabricLoaderVersion
-}
-
-def resolveLoaderCacheFile() {
-    def override = project.findProperty("loader_cache_file") ?: project.findProperty("global_loader_cache")
-    if (override != null && override.toString().trim()) {
-        return new File(override.toString().trim())
-    }
-    def local = new File(rootProject.projectDir, "loader.versions.cache.json")
-    if (local.exists()) {
-        return local
-    }
-    def parent = rootProject.projectDir.parentFile
-    if (parent != null) {
-        def parentCache = new File(parent, "loader.versions.cache.json")
-        if (parentCache.exists()) {
-            return parentCache
-        }
-    }
-    return local
-}
-
-def loadLocalLoaderCache() {
-    def cacheFile = resolveLoaderCacheFile()
-    if (!cacheFile.exists()) {
-        return [:]
-    }
-    try {
-        def parsed = new JsonSlurper().parse(cacheFile)
-        return parsed instanceof Map ? parsed : [:]
-    } catch (Exception ex) {
-        println "⚠️  Failed to read local loader cache: ${ex.message}"
-        return [:]
-    }
-}
-
-def findLocalFabricLoaderVersion(String mcVersion) {
-    try {
-        def cache = loadLocalLoaderCache()
-        def fabric = cache?.fabric
-        if (fabric instanceof Map && fabric.containsKey(mcVersion)) {
-            def value = fabric[mcVersion]
-            return value != null ? value.toString() : null
-        }
-    } catch (Exception ignored) {
-        return null
-    }
-    return null
 }
 
 // -------------------- VERSION HANDLING --------------------
@@ -155,28 +61,15 @@ tasks.register('generatePreprocessorDefinitions') {
         def mcVersion = resolvedMinecraftVersion
         List<String> versions = []
         try {
-            def parsed = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/game"))
-            versions = parsed.findAll { it.stable }*.version.sort { a, b ->
-                def parse = { it.tokenize('.').collect { it as int } }
-                def pa = parse(a)
-                def pb = parse(b)
-                for (int i = 0; i < Math.max(pa.size(), pb.size()); i++) {
-                    def va = i < pa.size() ? pa[i] : 0
-                    def vb = i < pb.size() ? pb[i] : 0
-                    if (va != vb) return va <=> vb
-                }
-                return 0
-            }
+            def manifest = new JsonSlurper().parse(new URL("https://piston-meta.mojang.com/mc/game/version_manifest_v2.json"))
+            versions = manifest.versions.findAll { it.type == "release" }*.id
+            versions = versions.sort { a, b -> parseVersion(a) <=> parseVersion(b) }
         } catch (Exception ex) {
-            println "⚠️  Failed to download Fabric game versions: ${ex.message}"
-            versions = defaultFabricVersions
+            throw new GradleException("Failed to download Minecraft versions from Mojang manifest: ${ex.message}")
         }
         def index = versions.indexOf(mcVersion)
         if (index == -1) {
-            println "ℹ️  Minecraft ${mcVersion} not present in known list; using fallback entry."
-            versions = versions + mcVersion
-            versions = versions.unique().sort { parseVersion(it) }
-            index = versions.indexOf(mcVersion)
+            throw new GradleException("Minecraft ${mcVersion} not present in Mojang release manifest.")
         }
         def sb = new StringBuilder("# DO NOT TOUCH THIS FILE, it is handled by the build script\n")
         versions.eachWithIndex { v, i ->
@@ -226,90 +119,15 @@ tasks.withType(JavaCompile).configureEach {
 // -------------------- Dependency Resolution --------------------
 // This function resolves the correct Fabric loader and API versions for the given Minecraft version.
 def resolveFabricVersions(String mcVersion) {
-    def mcmetaMc = rootProject.ext.has('mcmetaMinecraftVersion') ? rootProject.ext.mcmetaMinecraftVersion?.toString() : null
-    def mcmetaMatches = mcmetaMc != null && mcmetaMc.toString().trim() && mcmetaMc.toString() == mcVersion
-    def mcmetaLoader = mcmetaMatches && rootProject.ext.has('mcmetaFabricLoaderVersion')
-            ? rootProject.ext.mcmetaFabricLoaderVersion
-            : null
-    def mcmetaApi = mcmetaMatches && rootProject.ext.has('mcmetaFabricApiVersion')
-            ? rootProject.ext.mcmetaFabricApiVersion
-            : null
-
-    try {
-        def loaderOverride = project.findProperty("loader_version") ?: project.findProperty("fabric_loader_version")
-        def localLoaderVersion = null
-        def loader = null
-        if (loaderOverride != null && loaderOverride.toString().trim()) {
-            loader = loaderOverride.toString().trim()
-            println "🧩 Using Fabric loader override ${loader}"
-        } else if (mcmetaLoader != null && mcmetaLoader.toString().trim()) {
-            loader = mcmetaLoader.toString().trim()
-            println "🧩 Using mcmeta Fabric loader ${loader}"
-        } else {
-            localLoaderVersion = findLocalFabricLoaderVersion(mcVersion)
-            if (localLoaderVersion) {
-                loader = localLoaderVersion
-                println "🗃️ Using local loader cache ${loader} for Minecraft ${mcVersion}"
-            }
-        }
-        if (loader == null) {
-            // Get the loader version from Fabric meta API
-            loader = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader/${mcVersion}"))[0].loader.version
-        }
-
-        def api = null
-        if (mcmetaApi != null && mcmetaApi.toString().trim()) {
-            api = mcmetaApi.toString().trim()
-            println "🧩 Using mcmeta Fabric API ${api}"
-        } else {
-            // Load jdlist.txt from Fabric Maven if not cached yet
-            if (project.ext.cachedJdList == null) {
-                println "🌐 Loading jdlist.txt from Fabric Maven..."
-                project.ext.cachedJdList = new URL("https://maven.fabricmc.net/jdlist.txt").text.readLines()
-            } else {
-                println "⚡ Using cached jdlist.txt"
-            }
-
-            def jdList = project.ext.cachedJdList
-            def parseVersion = { String str -> str.tokenize('.+-').collect { token -> token.isNumber() ? token.toInteger() : token } }
-
-            // Find the latest matching fabric-api version for the given Minecraft version
-            api = jdList.findAll {
-                it.startsWith("fabric-api-") && it.endsWith("+${mcVersion}")
-            }*.replace("fabric-api-", "")
-                    .max { a, b ->
-                        // Compare two version strings to determine which is newer
-                        def va = parseVersion(a)
-                        def vb = parseVersion(b)
-                        for (int i = 0; i < Math.max(va.size(), vb.size()); i++) {
-                            def ai = i < va.size() ? va[i] : 0
-                            def bi = i < vb.size() ? vb[i] : 0
-                            if (ai instanceof Number && bi instanceof Number) {
-                                if (ai != bi) return ai <=> bi
-                            } else {
-                                return ai.toString() <=> bi.toString()
-                            }
-                        }
-                        return 0
-                    }
-        }
-
-        // Return both loader and API version as a map
-        return [loader: loader, api: api]
-    } catch (Exception ex) {
-        println "⚠️  Failed to resolve Fabric versions dynamically: ${ex.message}"
-        def fallbackLocal = findLocalFabricLoaderVersion(mcVersion)
-        def fallbackLoader = project.findProperty("fabric_loader_version") ?: (fallbackLocal ?: fetchLatestFabricLoaderVersion())
-        if (mcmetaLoader != null && mcmetaLoader.toString().trim()) {
-            fallbackLoader = mcmetaLoader.toString().trim()
-        }
-        def fallbackApi = "0.100.0+${mcVersion}"
-        if (mcmetaApi != null && mcmetaApi.toString().trim()) {
-            fallbackApi = mcmetaApi.toString().trim()
-        }
-        println "   Falling back to loader=${fallbackLoader}, api=${fallbackApi}"
-        return [loader: fallbackLoader, api: fallbackApi]
+    def mcmetaMc = requireMcmetaExtra("mcmetaMinecraftVersion", "minecraftVersion")
+    if (mcmetaMc != mcVersion) {
+        throw new GradleException("mcmeta minecraftVersion ${mcmetaMc} does not match requested ${mcVersion}")
     }
+    def loader = requireMcmetaExtra("mcmetaFabricLoaderVersion", "Fabric loader")
+    def api = requireMcmetaExtra("mcmetaFabricApiVersion", "Fabric API")
+    println "🧩 Using mcmeta Fabric loader ${loader}"
+    println "🧩 Using mcmeta Fabric API ${api}"
+    return [loader: loader, api: api]
 }
 
 // Resolve the loader and API version for the current Minecraft version
@@ -329,6 +147,7 @@ dependencies {
     modImplementation "net.fabricmc:fabric-loader:${loader_version}" // Fabric loader
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}" // Fabric API
     modRuntimeOnly(libs.devauth.fabric) // DevAuth runtime mod
+    modRuntimeOnly(libs.apache.httpclient) // DevAuth HttpClient dependency
 
     // Add SLF4J logging dependencies for Minecraft 1.16
     if (resolvedMinecraftVersion.startsWith("1.16")) {

@@ -1,24 +1,4 @@
 pluginManagement {
-    def resolveMcmetaPluginDir = {
-        def override = gradle.startParameter.projectProperties.get("mcmetaPluginPath")?.trim()
-        if (!override) {
-            override = System.getenv("MCMETA_PLUGIN_PATH")
-        }
-        if (override) {
-            def candidate = new File(override)
-            if (!candidate.isAbsolute()) {
-                candidate = new File(settingsDir, override)
-            }
-            return candidate
-        }
-        return new File(settingsDir, "../../web/mcmeta/gradle-plugin")
-    }
-
-    def mcmetaPluginDir = resolveMcmetaPluginDir()
-    def mcmetaPluginAvailable = mcmetaPluginDir != null && mcmetaPluginDir.exists()
-    if (mcmetaPluginAvailable) {
-        includeBuild(mcmetaPluginDir)
-    }
     repositories {
         maven {
             name = 'Fabric'
@@ -35,8 +15,40 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
-    gradle.ext.mcmetaPluginAvailable = mcmetaPluginAvailable
 }
+
+def resolveMcmetaPluginDir = {
+    def override = gradle.startParameter.projectProperties.get("mcmetaPluginPath")?.trim()
+    if (!override) {
+        override = System.getenv("MCMETA_PLUGIN_PATH")
+    }
+    if (override) {
+        def candidate = new File(override)
+        if (!candidate.isAbsolute()) {
+            candidate = new File(settingsDir, override)
+        }
+        return candidate
+    }
+    def candidates = [
+            new File(settingsDir, "../../tools/mcmeta-gradle/gradle-plugin"),
+            new File(settingsDir, "../../web/mcmeta/gradle-plugin"),
+            new File(settingsDir, "../../../mcmeta/gradle-plugin")
+    ]
+    return candidates.find { it.exists() }
+}
+
+def mcmetaPluginDir = resolveMcmetaPluginDir()
+def mcmetaPluginAvailable = mcmetaPluginDir != null && mcmetaPluginDir.exists()
+if (mcmetaPluginAvailable) {
+    includeBuild(mcmetaPluginDir) {
+        dependencySubstitution {
+            substitute(module("net.uebliche:mcmeta-gradle")).using(project(":"))
+        }
+    }
+}
+
+gradle.ext.mcmetaPluginAvailable = mcmetaPluginAvailable
+gradle.ext.mcmetaPluginDir = mcmetaPluginDir
 
 def onlyLoader = gradle.startParameter.projectProperties.get("onlyLoader")?.trim()
 def loaders = ["fabric", "forge", "paper", "velocity"]
