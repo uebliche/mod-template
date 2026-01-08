@@ -46,16 +46,20 @@ def resolveMinecraftVersion = { Project project ->
 
 def mcmetaAvailable = gradle.ext.has("mcmetaPluginAvailable") && gradle.ext.mcmetaPluginAvailable
 if (mcmetaAvailable) {
-    apply plugin: 'net.uebliche.mcmeta'
+    try {
+        apply plugin: 'net.uebliche.mcmeta'
 
-    def requestedMcVersion = resolveMinecraftVersion(project)
-    mcmeta {
-        autoLoad = false
-        if (requestedMcVersion) {
-            minecraftVersion = requestedMcVersion.toString()
+        def requestedMcVersion = resolveMinecraftVersion(project)
+        mcmeta {
+            autoLoad = false
+            if (requestedMcVersion) {
+                minecraftVersion = requestedMcVersion.toString()
+            }
         }
+        mcmeta.resolveNow(project)
+    } catch (Exception ex) {
+        logger.lifecycle("⚠️  mcmeta plugin unavailable: ${ex.message}")
     }
-    mcmeta.resolveNow(project)
 }
 
 subprojects {
