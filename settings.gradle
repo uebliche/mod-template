@@ -1,22 +1,21 @@
-def resolveMcmetaPluginDir = {
-    def override = gradle.startParameter.projectProperties.get("mcmetaPluginPath")?.trim()
-    if (!override) {
-        override = System.getenv("MCMETA_PLUGIN_PATH")
-    }
-    if (override) {
-        def candidate = new File(override)
-        if (!candidate.isAbsolute()) {
-            candidate = new File(settingsDir, override)
-        }
-        return candidate
-    }
-    return new File(settingsDir, "../../web/mcmeta/gradle-plugin")
-}
-
-def mcmetaPluginDir = resolveMcmetaPluginDir()
-def mcmetaPluginAvailable = mcmetaPluginDir != null && mcmetaPluginDir.exists()
-
 pluginManagement {
+    def resolveMcmetaPluginDir = {
+        def override = gradle.startParameter.projectProperties.get("mcmetaPluginPath")?.trim()
+        if (!override) {
+            override = System.getenv("MCMETA_PLUGIN_PATH")
+        }
+        if (override) {
+            def candidate = new File(override)
+            if (!candidate.isAbsolute()) {
+                candidate = new File(settingsDir, override)
+            }
+            return candidate
+        }
+        return new File(settingsDir, "../../web/mcmeta/gradle-plugin")
+    }
+
+    def mcmetaPluginDir = resolveMcmetaPluginDir()
+    def mcmetaPluginAvailable = mcmetaPluginDir != null && mcmetaPluginDir.exists()
     if (mcmetaPluginAvailable) {
         includeBuild(mcmetaPluginDir)
     }
@@ -36,9 +35,8 @@ pluginManagement {
         mavenCentral()
         gradlePluginPortal()
     }
+    gradle.ext.mcmetaPluginAvailable = mcmetaPluginAvailable
 }
-
-gradle.ext.mcmetaPluginAvailable = mcmetaPluginAvailable
 
 def onlyLoader = gradle.startParameter.projectProperties.get("onlyLoader")?.trim()
 def loaders = ["fabric", "forge", "paper", "velocity"]
