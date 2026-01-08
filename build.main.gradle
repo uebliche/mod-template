@@ -28,6 +28,14 @@ def resolveMinecraftVersion = {
         }
     }
     if (!resolved) {
+        if (project.rootProject.ext.has("mcmetaMinecraftVersion")) {
+            def mcmetaValue = project.rootProject.ext.mcmetaMinecraftVersion
+            if (mcmetaValue != null && mcmetaValue.toString().trim()) {
+                resolved = mcmetaValue
+            }
+        }
+    }
+    if (!resolved) {
         throw new GradleException("Missing minecraft_version in gradle.properties")
     }
     return resolved.toString().trim()
@@ -218,57 +226,73 @@ tasks.withType(JavaCompile).configureEach {
 // -------------------- Dependency Resolution --------------------
 // This function resolves the correct Fabric loader and API versions for the given Minecraft version.
 def resolveFabricVersions(String mcVersion) {
+    def mcmetaMc = rootProject.ext.has('mcmetaMinecraftVersion') ? rootProject.ext.mcmetaMinecraftVersion?.toString() : null
+    def mcmetaMatches = mcmetaMc != null && mcmetaMc.toString().trim() && mcmetaMc.toString() == mcVersion
+    def mcmetaLoader = mcmetaMatches && rootProject.ext.has('mcmetaFabricLoaderVersion')
+            ? rootProject.ext.mcmetaFabricLoaderVersion
+            : null
+    def mcmetaApi = mcmetaMatches && rootProject.ext.has('mcmetaFabricApiVersion')
+            ? rootProject.ext.mcmetaFabricApiVersion
+            : null
+
     try {
-        // Load jdlist.txt from Fabric Maven if not cached yet
-        if (project.ext.cachedJdList == null) {
-            println "🌐 Loading jdlist.txt from Fabric Maven..."
-            project.ext.cachedJdList = new URL("https://maven.fabricmc.net/jdlist.txt").text.readLines()
+        def loaderOverride = project.findProperty("loader_version") ?: project.findProperty("fabric_loader_version")
+        def localLoaderVersion = null
+        def loader = null
+        if (loaderOverride != null && loaderOverride.toString().trim()) {
+            loader = loaderOverride.toString().trim()
+            println "🧩 Using Fabric loader override ${loader}"
+        } else if (mcmetaLoader != null && mcmetaLoader.toString().trim()) {
+            loader = mcmetaLoader.toString().trim()
+            println "🧩 Using mcmeta Fabric loader ${loader}"
         } else {
-        println "⚡ Using cached jdlist.txt"
-    }
-
-    def jdList = project.ext.cachedJdList
-
-    def loaderOverride = project.findProperty("loader_version") ?: project.findProperty("fabric_loader_version")
-    def localLoaderVersion = null
-    def loader = null
-    if (loaderOverride != null && loaderOverride.toString().trim()) {
-        loader = loaderOverride.toString().trim()
-        println "🧩 Using Fabric loader override ${loader}"
-    } else {
-        localLoaderVersion = findLocalFabricLoaderVersion(mcVersion)
-        if (localLoaderVersion) {
-            loader = localLoaderVersion
-            println "🗃️ Using local loader cache ${loader} for Minecraft ${mcVersion}"
-        }
-    }
-    if (loader == null) {
-        // Get the loader version from Fabric meta API
-        loader = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader/${mcVersion}"))[0].loader.version
-    }
-
-    // Helper function to parse version strings into comparable lists
-    def parseVersion = { String str -> str.tokenize('.+-').collect { token -> token.isNumber() ? token.toInteger() : token } }
-
-    // Find the latest matching fabric-api version for the given Minecraft version
-    def api = jdList.findAll {
-        it.startsWith("fabric-api-") && it.endsWith("+${mcVersion}")
-    }*.replace("fabric-api-", "")
-            .max { a, b ->
-                // Compare two version strings to determine which is newer
-                def va = parseVersion(a)
-                def vb = parseVersion(b)
-                for (int i = 0; i < Math.max(va.size(), vb.size()); i++) {
-                    def ai = i < va.size() ? va[i] : 0
-                    def bi = i < vb.size() ? vb[i] : 0
-                    if (ai instanceof Number && bi instanceof Number) {
-                        if (ai != bi) return ai <=> bi
-                    } else {
-                        return ai.toString() <=> bi.toString()
-                    }
-                }
-                return 0
+            localLoaderVersion = findLocalFabricLoaderVersion(mcVersion)
+            if (localLoaderVersion) {
+                loader = localLoaderVersion
+                println "🗃️ Using local loader cache ${loader} for Minecraft ${mcVersion}"
             }
+        }
+        if (loader == null) {
+            // Get the loader version from Fabric meta API
+            loader = new JsonSlurper().parse(new URL("https://meta.fabricmc.net/v2/versions/loader/${mcVersion}"))[0].loader.version
+        }
+
+        def api = null
+        if (mcmetaApi != null && mcmetaApi.toString().trim()) {
+            api = mcmetaApi.toString().trim()
+            println "🧩 Using mcmeta Fabric API ${api}"
+        } else {
+            // Load jdlist.txt from Fabric Maven if not cached yet
+            if (project.ext.cachedJdList == null) {
+                println "🌐 Loading jdlist.txt from Fabric Maven..."
+                project.ext.cachedJdList = new URL("https://maven.fabricmc.net/jdlist.txt").text.readLines()
+            } else {
+                println "⚡ Using cached jdlist.txt"
+            }
+
+            def jdList = project.ext.cachedJdList
+            def parseVersion = { String str -> str.tokenize('.+-').collect { token -> token.isNumber() ? token.toInteger() : token } }
+
+            // Find the latest matching fabric-api version for the given Minecraft version
+            api = jdList.findAll {
+                it.startsWith("fabric-api-") && it.endsWith("+${mcVersion}")
+            }*.replace("fabric-api-", "")
+                    .max { a, b ->
+                        // Compare two version strings to determine which is newer
+                        def va = parseVersion(a)
+                        def vb = parseVersion(b)
+                        for (int i = 0; i < Math.max(va.size(), vb.size()); i++) {
+                            def ai = i < va.size() ? va[i] : 0
+                            def bi = i < vb.size() ? vb[i] : 0
+                            if (ai instanceof Number && bi instanceof Number) {
+                                if (ai != bi) return ai <=> bi
+                            } else {
+                                return ai.toString() <=> bi.toString()
+                            }
+                        }
+                        return 0
+                    }
+        }
 
         // Return both loader and API version as a map
         return [loader: loader, api: api]
@@ -276,7 +300,13 @@ def resolveFabricVersions(String mcVersion) {
         println "⚠️  Failed to resolve Fabric versions dynamically: ${ex.message}"
         def fallbackLocal = findLocalFabricLoaderVersion(mcVersion)
         def fallbackLoader = project.findProperty("fabric_loader_version") ?: (fallbackLocal ?: fetchLatestFabricLoaderVersion())
+        if (mcmetaLoader != null && mcmetaLoader.toString().trim()) {
+            fallbackLoader = mcmetaLoader.toString().trim()
+        }
         def fallbackApi = "0.100.0+${mcVersion}"
+        if (mcmetaApi != null && mcmetaApi.toString().trim()) {
+            fallbackApi = mcmetaApi.toString().trim()
+        }
         println "   Falling back to loader=${fallbackLoader}, api=${fallbackApi}"
         return [loader: fallbackLoader, api: fallbackApi]
     }

@@ -48,6 +48,16 @@ Clone the repository and invoke the build for a specific loader/version:
 Use `build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
 `versions.matrix.json`. In the Uebliche monorepo this lives at `template/mod-template/build_all.sh`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version. Paper and Velocity entries in the matrix use `mcVersion` as the Paper dev bundle target and the Velocity API version respectively.
 
+## mcmeta integration (optional)
+
+If the mcmeta Gradle plugin is available, the template uses it to resolve the latest stable Minecraft and loader versions. Point `mcmetaPluginPath` (Gradle property) or `MCMETA_PLUGIN_PATH` (env var) to the mcmeta Gradle plugin directory. Example:
+
+```bash
+./gradlew :loader-fabric:build -PmcmetaPluginPath=../../web/mcmeta/gradle-plugin
+```
+
+When `minecraft_version` is not set, mcmeta falls back to the latest stable release. If the mcmeta plugin is not available, `minecraft_version` remains required.
+
 ### NeoForge specifics
 
 - Supported NeoForge/Minecraft targets live in `versions.matrix.json`. Each entry only needs the `mc` version; the build resolves both the matching NeoForge artifact and a compatible loader range automatically. Add optional fields (`neoForge`, `loaderVersionRange`, `properties`) only if you need to override the defaults.

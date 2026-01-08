@@ -149,6 +149,24 @@ def loadNeoForgeMetadata = {
     rootProject.ext.cachedNeoForgeVersions
 }
 
+def resolveMcmetaNeoForgeVersion = { String mcVersion ->
+    if (!rootProject.ext.has("mcmetaMinecraftVersion")) {
+        return null
+    }
+    def mcmetaMc = rootProject.ext.mcmetaMinecraftVersion?.toString()
+    if (!mcmetaMc || mcmetaMc != mcVersion) {
+        return null
+    }
+    if (!rootProject.ext.has("mcmetaNeoForgeVersion")) {
+        return null
+    }
+    def value = rootProject.ext.mcmetaNeoForgeVersion
+    if (value == null || !value.toString().trim()) {
+        return null
+    }
+    return value.toString().trim()
+}
+
 def resolveNeoForgeVersion = { String mcVersion ->
     if (project.hasProperty("neoForgeVersion")) {
         return project.property("neoForgeVersion").toString()
@@ -156,6 +174,10 @@ def resolveNeoForgeVersion = { String mcVersion ->
     def explicit = resolvedEntry.neoForge ?: resolvedEntry.neoforge ?: resolvedEntry.neoForgeVersion
     if (explicit) {
         return explicit.toString()
+    }
+    def mcmetaVersion = resolveMcmetaNeoForgeVersion(mcVersion)
+    if (mcmetaVersion) {
+        return mcmetaVersion
     }
 
     def parts = mcVersion.tokenize('.').collect { it as int }

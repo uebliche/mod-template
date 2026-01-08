@@ -34,7 +34,28 @@ def resolveMinecraftVersion = { Project project ->
             project.rootProject.findProperty("mcVersion"),
             project.rootProject.findProperty("minecraft_version")
     ]
-    candidates.find { it }?.toString()
+    def resolved = candidates.find { it }
+    if (!resolved && project.rootProject.ext.has("mcmetaMinecraftVersion")) {
+        def mcmetaValue = project.rootProject.ext.mcmetaMinecraftVersion
+        if (mcmetaValue != null && mcmetaValue.toString().trim()) {
+            resolved = mcmetaValue
+        }
+    }
+    resolved?.toString()
+}
+
+def mcmetaAvailable = gradle.ext.has("mcmetaPluginAvailable") && gradle.ext.mcmetaPluginAvailable
+if (mcmetaAvailable) {
+    apply plugin: 'net.uebliche.mcmeta'
+
+    def requestedMcVersion = resolveMinecraftVersion(project)
+    mcmeta {
+        autoLoad = false
+        if (requestedMcVersion) {
+            minecraftVersion = requestedMcVersion.toString()
+        }
+    }
+    mcmeta.resolveNow(project)
 }
 
 subprojects {

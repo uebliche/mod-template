@@ -19,8 +19,21 @@ base {
 
 def libsCatalog = project.extensions.findByType(VersionCatalogsExtension).named("libs")
 def defaultVelocityApi = libsCatalog.findVersion("velocity_api").get().requiredVersion
+def mcmetaVelocityVersion = null
+if (project.rootProject.ext.has("mcmetaMinecraftVersion")) {
+    def mcmetaMc = project.rootProject.ext.mcmetaMinecraftVersion?.toString()
+    if (mcmetaMc != null && mcmetaMc.toString().trim()) {
+        if (project.rootProject.ext.has("mcmetaVelocityVersion")) {
+            def value = project.rootProject.ext.mcmetaVelocityVersion
+            if (value != null && value.toString().trim()) {
+                mcmetaVelocityVersion = value.toString().trim()
+            }
+        }
+    }
+}
 def velocityApiVersion = (project.findProperty("mcVersion")
         ?: project.findProperty("velocity_api_version")
+        ?: mcmetaVelocityVersion
         ?: defaultVelocityApi).toString()
 def velocityPluginId = (project.findProperty("mod_id") ?: project.archives_base_name).toString()
 
@@ -52,6 +65,7 @@ tasks.withType(JavaCompile).configureEach {
 def resolveVelocityProxyVersion = {
     def version = (project.findProperty("mcVersion")
             ?: project.findProperty("velocity_proxy_version")
+            ?: mcmetaVelocityVersion
             ?: defaultVelocityApi).toString()
     return version
 }
