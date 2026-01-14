@@ -89,7 +89,17 @@ dependencies {
     implementation project(':common')
 }
 
-def requestedMcVersion = (project.hasProperty("mcVersion") ? project.property("mcVersion") : project.minecraft_version).toString()
+def requestedMcVersion = (project.hasProperty("mcVersion") ? project.property("mcVersion") : null)
+if (!requestedMcVersion && project.rootProject.ext.has("mcmetaMinecraftVersion")) {
+    def mcmetaValue = project.rootProject.ext.mcmetaMinecraftVersion
+    if (mcmetaValue != null && mcmetaValue.toString().trim()) {
+        requestedMcVersion = mcmetaValue.toString()
+    }
+}
+if (!requestedMcVersion) {
+    requestedMcVersion = project.minecraft_version
+}
+requestedMcVersion = requestedMcVersion.toString()
 def javaMajor = determineJavaMajor(requestedMcVersion)
 
 java {
