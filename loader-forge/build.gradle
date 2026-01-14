@@ -89,14 +89,6 @@ dependencies {
     implementation project(':common')
 }
 
-def matrixFile = new File(rootProject.projectDir, "versions.matrix.json")
-if (!matrixFile.exists()) {
-    throw new GradleException("Missing versions.matrix.json in ${rootProject.projectDir}")
-}
-
-def matrix = new JsonSlurper().parseText(matrixFile.text)
-def forgeEntries = (matrix.forge ?: []) as List
-
 def requestedMcVersion = (project.hasProperty("mcVersion") ? project.property("mcVersion") : project.minecraft_version).toString()
 def javaMajor = determineJavaMajor(requestedMcVersion)
 
@@ -106,33 +98,6 @@ java {
 
 tasks.withType(JavaCompile).configureEach {
     options.release = javaMajor
-}
-
-def resolvedRaw = forgeEntries.find { entry ->
-    if (entry instanceof Map) {
-        def mc = entry.mc ?: entry.mcVersion
-        if (!mc) return false
-        return mc == requestedMcVersion
-    }
-    return entry == requestedMcVersion
-}
-
-if (resolvedRaw == null) {
-    throw new GradleException("No NeoForge metadata found for Minecraft ${requestedMcVersion}. Update versions.matrix.json -> forge[].")
-}
-
-def resolvedEntry = null
-if (resolvedRaw instanceof Map) {
-    resolvedEntry = resolvedRaw as Map<String, ?>
-} else if (resolvedRaw instanceof String) {
-    resolvedEntry = [mc: resolvedRaw]
-} else {
-    throw new GradleException("Unsupported forge entry type for Minecraft ${requestedMcVersion}.")
-}
-
-if (resolvedEntry.enabled == Boolean.FALSE) {
-    def reason = resolvedEntry.reason ?: "disabled"
-    throw new GradleException("NeoForge ${requestedMcVersion} is disabled: ${reason}")
 }
 
 def loadNeoForgeMetadata = {
@@ -171,10 +136,6 @@ def resolveNeoForgeVersion = { String mcVersion ->
     if (project.hasProperty("neoForgeVersion")) {
         return project.property("neoForgeVersion").toString()
     }
-    def explicit = resolvedEntry.neoForge ?: resolvedEntry.neoforge ?: resolvedEntry.neoForgeVersion
-    if (explicit) {
-        return explicit.toString()
-    }
     def mcmetaVersion = resolveMcmetaNeoForgeVersion(mcVersion)
     if (mcmetaVersion) {
         return mcmetaVersion
@@ -199,9 +160,6 @@ def resolveNeoForgeVersion = { String mcVersion ->
 def neoForgeVersion = resolveNeoForgeVersion(requestedMcVersion)
 
 def deriveLoaderVersionRange = {
-    if (resolvedEntry.loaderVersionRange ?: resolvedEntry.loaderRange) {
-        return (resolvedEntry.loaderVersionRange ?: resolvedEntry.loaderRange).toString()
-    }
     def parts = neoForgeVersion.tokenize('.')
     def major = parts[0].toInteger()
     def upperBound = major + 1

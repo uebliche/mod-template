@@ -45,8 +45,10 @@ Clone the repository and invoke the build for a specific loader/version:
 ./gradlew :loader-velocity:build -PmcVersion=3.3.0-SNAPSHOT
 ```
 
-Use `build_all.sh` (or `build_all.ps1` on Windows) to iterate over every combination defined in
-`versions.matrix.json`. In the Uebliche monorepo this lives at `template/mod-template/build_all.sh`. The scripts run Gradle on Java 21 (loom + NeoForge requirement), while the build logic itself targets the appropriate bytecode level per Minecraft version. Paper and Velocity entries in the matrix use `mcVersion` as the Paper dev bundle target and the Velocity API version respectively.
+Use `build_all.sh` (or `build_all.ps1` on Windows) to iterate over every loader and Minecraft
+version derived from mcmeta. The list starts at `buildFromVersion` in `gradle.properties` and
+includes all newer stable releases. The scripts run Gradle on Java 21 (loom + NeoForge requirement),
+while the build logic itself targets the appropriate bytecode level per Minecraft version.
 
 ## mcmeta integration
 
@@ -60,9 +62,8 @@ When `minecraft_version` is not set, mcmeta uses the latest stable release. The 
 
 ### NeoForge specifics
 
-- Supported NeoForge/Minecraft targets live in `versions.matrix.json`. Each entry only needs the `mc` version; the build resolves both the matching NeoForge artifact and a compatible loader range automatically. Add optional fields (`neoForge`, `loaderVersionRange`, `properties`) only if you need to override the defaults.
-- Fabric targets default to the stable Minecraft releases at or above `buildFromVersion` (from `gradle.properties`). Add entries under the `fabric` key in `versions.matrix.json` only when you need to pin/skip specific releases; otherwise the automation derives the list for you.
-- When adding another Minecraft/NeoForge pair, drop a new JSON object into the `forge` list. Optional `properties` can pass extra `-P` flags to Gradle builds (used by the CI matrix and the `build_all.*` scripts).
+- NeoForge builds resolve loader + API versions from mcmeta and Maven metadata based on `-PmcVersion`.
+- The build list is driven by `buildFromVersion` in `gradle.properties` (all newer stable releases).
 - Local dev uses ModDevGradle’s `forgeclientdev` target: `./gradlew :loader-forge:runClient -PmcVersion=<version>` boots with the shared `common` code already on the classpath.
 
 ## Updating build.main.gradle

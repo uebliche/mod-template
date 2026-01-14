@@ -13,17 +13,6 @@ import subprocess
 import sys
 
 root = pathlib.Path(__file__).resolve().parent
-matrix_path = root / "versions.matrix.json"
-if not matrix_path.exists():
-    sys.exit(f"Matrix file '{matrix_path}' missing")
-
-matrix = json.loads(matrix_path.read_text())
-loaders = sorted(matrix.keys())
-
-if not loaders:
-    sys.exit("No loaders found in versions.matrix.json")
-
-loader_map = {name.lower(): name for name in loaders}
 
 def normalize_version(value: str):
     parts = re.split(r"[.]", str(value))
@@ -35,31 +24,47 @@ def normalize_version(value: str):
         nums.append(0)
     return tuple(nums[:3])
 
-def build_variants(entries):
-    variants = []
-    for entry in entries:
-        if isinstance(entry, str):
-            mc = entry
-            props = {}
-        elif isinstance(entry, dict):
-            mc = entry.get("mc") or entry.get("mcVersion")
-            if not mc:
-                continue
-            if entry.get("enabled") is False:
-                continue
-            props = entry.get("properties") or {}
-        else:
+def is_release_version(value: str) -> bool:
+    return bool(re.match(r"^\d+(\.\d+)*$", value))
+
+def read_build_from():
+    gradle_path = root / "gradle.properties"
+    if not gradle_path.exists():
+        return "0.0.0"
+    for line in gradle_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
             continue
-        args = []
-        if isinstance(props, dict):
-            for key, value in props.items():
-                args.append(f"-P{key}={value}")
-        label = mc
-        if args:
-            label = f"{mc} [{' '.join(args)}]"
-        variants.append({"mc": mc, "args": args, "label": label})
-    variants.sort(key=lambda v: normalize_version(v["mc"]), reverse=True)
-    return variants
+        if line.startswith("buildFromVersion="):
+            return line.split("=", 1)[1].strip()
+    return "0.0.0"
+
+def load_mcmeta_versions():
+    mcmeta_path = (root / "../../web/mcmeta/loom-index.json").resolve()
+    if not mcmeta_path.exists():
+        sys.exit(f"mcmeta file '{mcmeta_path}' missing")
+    payload = json.loads(mcmeta_path.read_text())
+    versions = payload.get("fabric", {}).get("versions") or payload.get("versions") or []
+    versions = [v for v in versions if isinstance(v, str) and is_release_version(v)]
+    versions.sort(key=normalize_version, reverse=True)
+    return versions
+
+def resolve_versions():
+    build_from = read_build_from()
+    versions = load_mcmeta_versions()
+    min_key = normalize_version(build_from) if build_from else (0, 0, 0)
+    return [v for v in versions if normalize_version(v) >= min_key]
+
+loaders = sorted(
+    p.name[len("loader-") :]
+    for p in root.iterdir()
+    if p.is_dir() and p.name.startswith("loader-")
+)
+
+if not loaders:
+    sys.exit("No loaders found in loader-* directories")
+
+loader_map = {name.lower(): name for name in loaders}
 
 def read_choice(prompt, options, display_map=None, default=None):
     input_stream = sys.stdin if sys.stdin.isatty() else None
@@ -99,20 +104,17 @@ mode = sys.argv[3].strip() if len(sys.argv) > 3 else ""
 if loader:
     loader = loader_map.get(loader.lower(), loader)
 
-loader_display = {}
-for name in loaders:
-    count = len(build_variants(matrix.get(name, [])))
-    loader_display[name] = f"{name} ({count} version(s))"
+versions = resolve_versions()
+if not versions:
+    sys.exit("No mcmeta versions found for buildFromVersion")
+
+loader_display = {name: f"{name} ({len(versions)} version(s))" for name in loaders}
 
 if not loader or loader not in loaders:
     loader = read_choice("Pick loader", loaders, loader_display, loaders[0])
 
-variants = build_variants(matrix.get(loader, []))
-if not variants:
-    sys.exit(f"No versions found for loader '{loader}'.")
-
-version_labels = {v["mc"]: v["label"] for v in variants}
-default_version = variants[0]["mc"]
+version_labels = {v: v for v in versions}
+default_version = versions[0]
 
 if not version:
     print(f"Auto-selecting latest version: {default_version}")
@@ -120,14 +122,10 @@ if not version:
 elif version not in version_labels:
     version = read_choice(
         f"Pick version for {loader}",
-        [v["mc"] for v in variants],
+        versions,
         version_labels,
         default_version,
     )
-
-selected = next((v for v in variants if v["mc"] == version), None)
-if not selected:
-    sys.exit(f"Version '{version}' not found for loader '{loader}'.")
 
 mode_options_by_loader = {
     "fabric": ["client", "server", "build"],
@@ -167,7 +165,7 @@ cmd = [
     f":loader-{loader}:{task}",
     f"-PmcVersion={version}",
     f"-PonlyLoader={loader}",
-] + selected["args"]
+]
 print("")
 print("==> " + " ".join(cmd))
 

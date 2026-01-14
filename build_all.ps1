@@ -3,12 +3,11 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
-$matrixPath = Join-Path $root 'versions.matrix.json'
-if (-not (Test-Path $matrixPath)) {
-    throw "Matrix file '$matrixPath' missing"
+$mcmetaPath = Join-Path $root '..\..\web\mcmeta\loom-index.json'
+if (-not (Test-Path $mcmetaPath)) {
+    throw "mcmeta file '$mcmetaPath' missing"
 }
 
-$matrix = Get-Content $matrixPath -Raw | ConvertFrom-Json
 $entries = @()
 $java21 = "C:\Program Files\Java\jdk-21"
 $originalPath = $env:Path
@@ -34,40 +33,46 @@ function Get-JavaHome {
     return $java21
 }
 
-foreach ($prop in $matrix.PSObject.Properties) {
-    $loader = $prop.Name
-    foreach ($entry in $prop.Value) {
-        if ($entry -is [string]) {
-            $mc = $entry
-            $props = @{}
-        } else {
-            $mc = $entry.mc
-            if (-not $mc) { $mc = $entry.mcVersion }
-            if (-not $mc) { continue }
-            if (($entry.enabled -ne $null) -and (-not $entry.enabled)) { continue }
-            $props = $entry.properties
-        }
-        $args = @()
-        if ($props -is [System.Collections.IDictionary]) {
-            foreach ($key in $props.Keys) {
-                $args += "-P$($key)=$($props[$key])"
-            }
-        } elseif ($props) {
-            $propsPS = $props | ConvertTo-Json -Compress | ConvertFrom-Json
-            foreach ($kv in $propsPS.PSObject.Properties) {
-                $args += "-P$($kv.Name)=$($kv.Value)"
-            }
-        }
-        $entries += [pscustomobject]@{
-            Loader = $loader
-            Mc      = $mc
-            Args    = $args
+$buildFrom = '0.0.0'
+$gradleProps = Join-Path $root 'gradle.properties'
+if (Test-Path $gradleProps) {
+    foreach ($line in Get-Content $gradleProps) {
+        $trim = $line.Trim()
+        if ($trim -and -not $trim.StartsWith('#') -and $trim.StartsWith('buildFromVersion=')) {
+            $buildFrom = $trim.Split('=', 2)[1].Trim()
+            break
         }
     }
 }
 
-if ($entries.Count -eq 0) {
-    throw "No loader entries found in versions.matrix.json"
+$payload = Get-Content $mcmetaPath -Raw | ConvertFrom-Json
+$versions = @()
+if ($payload.fabric -and $payload.fabric.versions) {
+    $versions = $payload.fabric.versions
+} elseif ($payload.versions) {
+    $versions = $payload.versions
+}
+$versions = $versions | Where-Object { $_ -match '^\d+(\.\d+)*$' }
+$versions = $versions | Sort-Object { [version](Normalize-Version $_) } -Descending
+$versions = $versions | Where-Object { (Compare-Version $_ $buildFrom) -ge 0 }
+
+if ($versions.Count -eq 0) {
+    throw "No mcmeta versions found for buildFromVersion"
+}
+
+$loaders = Get-ChildItem -Directory -Filter 'loader-*' | ForEach-Object { $_.Name.Substring(7) }
+if ($loaders.Count -eq 0) {
+    throw "No loaders found in loader-* directories"
+}
+
+foreach ($loader in $loaders) {
+    foreach ($mc in $versions) {
+        $entries += [pscustomobject]@{
+            Loader = $loader
+            Mc      = $mc
+            Args    = @()
+        }
+    }
 }
 
 # Prefer the Windows batch wrapper when available so Gradle runs in-place
@@ -76,7 +81,7 @@ if (-not (Test-Path $gradlew)) {
     $gradlew = Join-Path $root 'gradlew'
 }
 if ($entries.Count -eq 0) {
-    throw "No loader entries found in versions.matrix.json"
+    throw "No loader entries found via mcmeta"
 }
 
 $results = @()
@@ -113,7 +118,7 @@ foreach ($item in $entries) {
 $env:JAVA_HOME = $originalJavaHome
 $env:Path = $originalPath
 
-Write-Host "`nBuild matrix:"
+Write-Host "`nBuild versions:"
 "{0,-10} {1,-10} {2,-12} {3}" -f "Loader", "MC", "Status", "Java"
 "{0,-10} {1,-10} {2,-12} {3}" -f "------", "--------", "------------", "-----------------------------"
 foreach ($row in $results) {

@@ -12,27 +12,69 @@ select_java_home() {
 }
 
 readarray -t ENTRIES < <(python3 - <<'PY'
-import json, pathlib
-matrix = json.loads(pathlib.Path('versions.matrix.json').read_text())
-for loader, entries in matrix.items():
-    for entry in entries:
-        if isinstance(entry, str):
-            mc = entry
-            props = {}
-        elif isinstance(entry, dict):
-            mc = entry.get('mc') or entry.get('mcVersion')
-            if not mc or entry.get('enabled', True) is False:
-                continue
-            props = entry.get('properties') or {}
-        else:
+import json
+import pathlib
+import re
+
+root = pathlib.Path('.')
+mcmeta_path = (root / "../../web/mcmeta/loom-index.json").resolve()
+if not mcmeta_path.exists():
+    raise SystemExit(f"mcmeta file '{mcmeta_path}' missing")
+
+def normalize_version(value: str):
+    parts = re.split(r"[.]", str(value))
+    nums = []
+    for part in parts:
+        match = re.match(r"(\d+)", part)
+        nums.append(int(match.group(1)) if match else 0)
+    while len(nums) < 3:
+        nums.append(0)
+    return tuple(nums[:3])
+
+def is_release_version(value: str) -> bool:
+    return bool(re.match(r"^\\d+(\\.\\d+)*$", value))
+
+def read_build_from():
+    gradle_path = root / "gradle.properties"
+    if not gradle_path.exists():
+        return "0.0.0"
+    for line in gradle_path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#"):
             continue
-        args = ' '.join(f"-P{k}={v}" for k, v in props.items())
-        print('|'.join([loader, mc, args]))
+        if line.startswith("buildFromVersion="):
+            return line.split("=", 1)[1].strip()
+    return "0.0.0"
+
+payload = json.loads(mcmeta_path.read_text())
+versions = payload.get("fabric", {}).get("versions") or payload.get("versions") or []
+versions = [v for v in versions if isinstance(v, str) and is_release_version(v)]
+versions.sort(key=normalize_version, reverse=True)
+
+build_from = read_build_from()
+min_key = normalize_version(build_from) if build_from else (0, 0, 0)
+versions = [v for v in versions if normalize_version(v) >= min_key]
+
+if not versions:
+    raise SystemExit("No mcmeta versions found for buildFromVersion")
+
+loaders = sorted(
+    p.name[len("loader-") :]
+    for p in root.iterdir()
+    if p.is_dir() and p.name.startswith("loader-")
+)
+
+if not loaders:
+    raise SystemExit("No loaders found in loader-* directories")
+
+for loader in loaders:
+    for mc in versions:
+        print("|".join([loader, mc, ""]))
 PY
 )
 
 if ((${#ENTRIES[@]} == 0)); then
-  echo "No loader entries found in versions.matrix.json" >&2
+  echo "No loader entries found via mcmeta" >&2
   exit 1
 fi
 
@@ -40,13 +82,8 @@ SUMMARY=()
 overall_exit=0
 
 for entry in "${ENTRIES[@]}"; do
-  IFS='|' read -r loader mc args <<<"$entry"
+  IFS='|' read -r loader mc _ <<<"$entry"
   cmd=("./gradlew" ":loader-${loader}:build" "-PmcVersion=${mc}")
-  if [[ -n "$args" ]]; then
-    for extra in $args; do
-      cmd+=("$extra")
-    done
-  fi
   java_home="$(select_java_home "$mc")"
   if [[ ! -d "$java_home" ]]; then
     echo "Java home not found for $mc at $java_home" >&2
@@ -68,7 +105,7 @@ for entry in "${ENTRIES[@]}"; do
   SUMMARY+=("$loader|$mc|$status|$java_home")
 done
 
-echo -e "\nBuild matrix:"
+echo -e "\nBuild versions:"
 printf "%-10s %-10s %-12s %s\n" "Loader" "MC" "Status" "JAVA_HOME"
 printf "%-10s %-10s %-12s %s\n" "------" "--------" "------------" "-----------------------------"
 for row in "${SUMMARY[@]}"; do

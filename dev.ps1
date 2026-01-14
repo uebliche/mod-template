@@ -6,19 +6,12 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-try {
-    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13 -bor [Net.SecurityProtocolType]::Tls11
-} catch {
-    # best-effort on older PowerShell
-}
-
-$ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $root
 
-$matrixPath = Join-Path $root 'versions.matrix.json'
-if (-not (Test-Path $matrixPath)) {
-    throw "Matrix file '$matrixPath' missing"
+$mcmetaPath = Join-Path $root '..\..\web\mcmeta\loom-index.json'
+if (-not (Test-Path $mcmetaPath)) {
+    throw "mcmeta file '$mcmetaPath' missing"
 }
 
 function Normalize-Version {
@@ -32,6 +25,13 @@ function Normalize-Version {
     }
     while ($numeric.Count -lt 3) { $numeric += 0 }
     return ($numeric[0..2] -join '.')
+}
+
+function Compare-Version {
+    param($A, $B)
+    $va = [version](Normalize-Version $A)
+    $vb = [version](Normalize-Version $B)
+    return $va.CompareTo($vb)
 }
 
 function Read-Choice {
@@ -65,186 +65,64 @@ function Read-Choice {
     }
 }
 
-function Fetch-JsonSafe {
-    param([string]$Url)
-    try {
-        return Invoke-RestMethod -Uri $Url -UseBasicParsing -TimeoutSec 15
-    } catch {
-        Write-Host "⚠️  Failed to fetch $Url : $_" -ForegroundColor DarkYellow
-        return $null
-    }
-}
-
-$defaultFabricFallback = @(
-    "1.14","1.14.1","1.14.2","1.14.3","1.14.4",
-    "1.15","1.15.1","1.15.2",
-    "1.16","1.16.1","1.16.2","1.16.3","1.16.4","1.16.5",
-    "1.17","1.17.1",
-    "1.18","1.18.1","1.18.2",
-    "1.19","1.19.1","1.19.2","1.19.3","1.19.4",
-    "1.20","1.20.1","1.20.2","1.20.3","1.20.4","1.20.5","1.20.6",
-    "1.21","1.21.1","1.21.2","1.21.3","1.21.4","1.21.5","1.21.6","1.21.7","1.21.8","1.21.9","1.21.10"
-)
-
-function Get-MatrixVariants {
-    param($Matrix, [string]$Loader)
-    $variants = @()
-    $entries = $Matrix.$Loader
-    if (-not $entries) { return @() }
-    foreach ($entry in $entries) {
-        if ($entry -is [string]) {
-            $mc = $entry
-            $props = @{}
-        } else {
-            $mc = $entry.mc
-            if (-not $mc) { $mc = $entry.mcVersion }
-            if (-not $mc) { continue }
-            if (($entry.enabled -ne $null) -and (-not $entry.enabled)) { continue }
-            $props = $entry.properties
-        }
-        $args = @()
-        if ($props -is [System.Collections.IDictionary]) {
-            foreach ($key in $props.Keys) {
-                $args += "-P$($key)=$($props[$key])"
-            }
-        } elseif ($props) {
-            $propsPS = $props | ConvertTo-Json -Compress | ConvertFrom-Json
-            foreach ($kv in $propsPS.PSObject.Properties) {
-                $args += "-P$($kv.Name)=$($kv.Value)"
-            }
-        }
-        $label = $mc
-        if ($args.Count -gt 0) { $label = "$mc [$($args -join ' ')]" }
-        $variants += [pscustomobject]@{
-            Mc    = $mc
-            Args  = $args
-            Label = $label
+function Read-BuildFrom {
+    $gradleProps = Join-Path $root 'gradle.properties'
+    if (-not (Test-Path $gradleProps)) { return '0.0.0' }
+    foreach ($line in Get-Content $gradleProps) {
+        $trim = $line.Trim()
+        if ($trim -and -not $trim.StartsWith('#') -and $trim.StartsWith('buildFromVersion=')) {
+            return $trim.Split('=', 2)[1].Trim()
         }
     }
-    return $variants
+    return '0.0.0'
 }
 
-function Get-FabricVersionsFromApi {
-    $data = Fetch-JsonSafe "https://meta.fabricmc.net/v2/versions/game"
-    if (-not $data) {
-        return $defaultFabricFallback
+function Load-McmetaVersions {
+    param([string]$BuildFrom)
+    $payload = Get-Content $mcmetaPath -Raw | ConvertFrom-Json
+    $versions = @()
+    if ($payload.fabric -and $payload.fabric.versions) {
+        $versions = $payload.fabric.versions
+    } elseif ($payload.versions) {
+        $versions = $payload.versions
     }
-    $stable = $data | Where-Object { $_.stable -eq $true } | ForEach-Object { $_.version }
-    if (-not $stable -or $stable.Count -eq 0) {
-        return $defaultFabricFallback
-    }
-    return $stable
+    $versions = $versions | Where-Object { $_ -match '^\d+(\.\d+)*$' }
+    $versions = $versions | Sort-Object { [version](Normalize-Version $_) } -Descending
+    $versions = $versions | Where-Object { (Compare-Version $_ $BuildFrom) -ge 0 }
+    return $versions
 }
 
-function Get-PaperVersionsFromApi {
-    $data = Fetch-JsonSafe "https://api.papermc.io/v2/projects/paper"
-    if (-not $data) { return @() }
-    return $data.versions
-}
-
-function Get-VelocityVersionsFromApi {
-    $data = Fetch-JsonSafe "https://api.papermc.io/v2/projects/velocity"
-    if (-not $data) { return @() }
-    return $data.versions
-}
-
-function Resolve-VariantsForLoader {
-    param($Matrix, [string]$Loader)
-    $matrixVariants = Get-MatrixVariants -Matrix $Matrix -Loader $Loader
-    $remote = @()
-    $source = "matrix"
-
-    # If matrix already defines variants, treat it as authoritative to avoid unsupported remote versions
-    if ($matrixVariants.Count -gt 0) {
-        return @{
-            Variants = $matrixVariants
-            Source   = "matrix"
-        }
-    }
-
-    switch ($Loader) {
-        "fabric"   { $remote = Get-FabricVersionsFromApi }
-        "paper"    { $remote = Get-PaperVersionsFromApi }
-        "velocity" { $remote = Get-VelocityVersionsFromApi }
-        default    { $remote = @() }
-    }
-
-    if ($Loader -eq "forge" -or -not $remote -or $remote.Count -eq 0) {
-        return @{
-            Variants = $matrixVariants
-            Source   = "matrix-only"
-        }
-    }
-
-    $variants = @()
-    foreach ($ver in $remote) {
-        $match = $matrixVariants | Where-Object { $_.Mc -eq $ver } | Select-Object -First 1
-        if ($match) {
-            $variants += $match
-        } else {
-            $variants += [pscustomobject]@{
-                Mc    = $ver
-                Args  = @()
-                Label = $ver
-            }
-        }
-    }
-    return @{
-        Variants = $variants
-        Source   = "remote+matrix"
-    }
-}
-
-$matrix = Get-Content $matrixPath -Raw | ConvertFrom-Json
-$availableLoaders = $matrix.PSObject.Properties | Sort-Object Name | ForEach-Object { $_.Name }
+$availableLoaders = Get-ChildItem -Directory -Filter 'loader-*' | ForEach-Object { $_.Name.Substring(7) }
 if (-not $availableLoaders -or $availableLoaders.Count -eq 0) {
-    throw "No loaders found in versions.matrix.json"
+    throw "No loaders found in loader-* directories"
+}
+
+$buildFrom = Read-BuildFrom
+$versions = Load-McmetaVersions -BuildFrom $buildFrom
+if (-not $versions -or $versions.Count -eq 0) {
+    throw "No mcmeta versions found for buildFromVersion"
 }
 
 $loaderDisplay = @{}
-$loaderVariantCache = @{}
 foreach ($loaderName in $availableLoaders) {
-    $resolveInfo = Resolve-VariantsForLoader -Matrix $matrix -Loader $loaderName
-    $loaderVariantCache[$loaderName] = $resolveInfo
-    $count = ($resolveInfo.Variants).Count
-    $source = $resolveInfo.Source
-    $loaderDisplay[$loaderName] = "$loaderName ($count version(s), $source)"
+    $loaderDisplay[$loaderName] = "$loaderName ($($versions.Count) version(s))"
 }
 
 if (-not $Loader -or -not ($availableLoaders -contains $Loader)) {
     $Loader = Read-Choice -Prompt "Pick loader" -Options $availableLoaders -DisplayMap $loaderDisplay
 }
 
-$resolve = $loaderVariantCache[$Loader]
-if (-not $resolve) {
-    $resolve = Resolve-VariantsForLoader -Matrix $matrix -Loader $Loader
-}
-$variants = $resolve.Variants
-$variantSource = $resolve.Source
-
-if ($variants.Count -eq 0) {
-    throw "No versions found for loader '$Loader' (remote fetch + matrix fallback)."
-}
-
-$variants = $variants | Sort-Object @{ Expression = { [version](Normalize-Version $_.Mc) } ; Descending = $true }
 $versionLabels = @{}
-foreach ($v in $variants) {
-    $versionLabels[$v.Mc] = $v.Label
+foreach ($v in $versions) {
+    $versionLabels[$v] = $v
 }
 
-Write-Host "Versionsquelle: $variantSource" -ForegroundColor DarkGray
-
-$defaultVersion = $variants[0].Mc
+$defaultVersion = $versions[0]
 if (-not $Version) {
     Write-Host "Auto-selecting latest version: $defaultVersion" -ForegroundColor DarkCyan
     $Version = $defaultVersion
-} elseif (-not ($variants.Mc -contains $Version)) {
-    $Version = Read-Choice -Prompt "Pick version for $Loader" -Options ($variants.Mc) -DisplayMap $versionLabels -Default $defaultVersion
-}
-
-$selected = $variants | Where-Object { $_.Mc -eq $Version } | Select-Object -First 1
-if (-not $selected) {
-    throw "Version '$Version' not found for loader '$Loader'"
+} elseif (-not ($versions -contains $Version)) {
+    $Version = Read-Choice -Prompt "Pick version for $Loader" -Options $versions -DisplayMap $versionLabels -Default $defaultVersion
 }
 
 $modeOptionsByLoader = @{
@@ -291,7 +169,7 @@ if (-not (Test-Path $gradlew)) {
     $gradlew = Join-Path $root 'gradlew'
 }
 
-$cmd = @($gradlew, ":loader-$Loader:$task", "-PmcVersion=$Version", "-PonlyLoader=$Loader") + $selected.Args
+$cmd = @($gradlew, ":loader-$Loader:$task", "-PmcVersion=$Version", "-PonlyLoader=$Loader")
 Write-Host "`n==> $($cmd -join ' ')" -ForegroundColor Cyan
 
 $originalPath = $env:Path

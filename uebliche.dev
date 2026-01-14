@@ -1,0 +1,47 @@
+{
+  "defaults": {
+    "loader": "fabric",
+    "runMode": "client",
+    "version": "1.21.11"
+  },
+  "gradleArgs": [
+    "--build-cache",
+    "--parallel",
+    "-PmcVersion={mcVersion}",
+    "-Ploader_cache_file={loader_cache_file}",
+    "-PonlyLoader={loader}"
+  ],
+  "gradleArgsByLoader": {
+    "fabric": [
+      "-PskipForge=true"
+    ],
+    "forge": [
+      "-PforceForge=true"
+    ],
+    "paper": [
+      "-PskipForge=true"
+    ],
+    "velocity": [
+      "-PskipForge=true"
+    ]
+  },
+  "group": "uebliche/mcmeta",
+  "id": "template/mod-template",
+  "kind": "project",
+  "loaderSource": "mcmeta",
+  "name": "Mod Template",
+  "runModes": [
+    "client",
+    "server"
+  ],
+  "serverOnlyLoaders": [
+    "paper",
+    "velocity"
+  ],
+  "tasks": {
+    "build": "build",
+    "runClient": "runClient",
+    "runServer": "runServer",
+    "template": ":loader-{loader}:{task}"
+  }
+}

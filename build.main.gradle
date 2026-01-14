@@ -146,8 +146,6 @@ dependencies {
     mappings loom.officialMojangMappings() // Official Mojang mappings
     modImplementation "net.fabricmc:fabric-loader:${loader_version}" // Fabric loader
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}" // Fabric API
-    modRuntimeOnly(libs.devauth.fabric) // DevAuth runtime mod
-    modRuntimeOnly(libs.apache.httpclient) // DevAuth HttpClient dependency
 
     // Add SLF4J logging dependencies for Minecraft 1.16
     if (resolvedMinecraftVersion.startsWith("1.16")) {
@@ -156,11 +154,6 @@ dependencies {
         println "📦 SLF4J enabled for Minecraft ${mcVersion}"
     }
 }
-
-repositories {
-    maven { url = "https://pkgs.dev.azure.com/djtheredstoner/DevAuth/_packaging/public/maven/v1" }
-}
-
 
 sourceSets {
     main {

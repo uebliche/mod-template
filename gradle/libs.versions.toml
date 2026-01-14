@@ -1,7 +1,6 @@
 [versions]
 slf4j = "1.7.36"
 manifold = "2025.1.25"
-devAuth = "1.2.1"
 apache_httpclient = "4.5.14"
 shadow = "9.0.0-beta15"
 minotaur = "2.+"
@@ -11,7 +10,6 @@ paperweight = "1.7.7"
 velocity_api = "3.3.0-SNAPSHOT"
 
 [libraries]
-devauth-fabric = { module = "me.djtheredstoner:DevAuth-fabric", version.ref = "devAuth" }
 apache-httpclient = { module = "org.apache.httpcomponents:httpclient", version.ref = "apache_httpclient" }
 manifold = { module ="systems.manifold:manifold-preprocessor", version.ref = "manifold" }
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
