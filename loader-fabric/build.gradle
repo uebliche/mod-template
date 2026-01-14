@@ -402,22 +402,24 @@ remapJar {
 }
 def changelogText = file('release-notes.md').exists() ? file('release-notes.md').text : "No changelog provided."
 
-modrinth {
-    println "🔗 Configuring Modrinth upload..."
-    debugMode = isDebugMode()
-    syncBodyFrom = rootProject.file("README.md").text
-    token = System.getenv("MODRINTH_TOKEN")
-    projectId = project.modrinth_projectId
-    versionNumber = version
-    versionName = "${archives_base_name}-${minecraft_version}+${version}"
-    versionType = project.hasProperty("version_type") ? project.version_type : "release"
-    uploadFile = remapJar
-    gameVersions = ["${resolvedMinecraftVersion}"]
-    loaders = ["fabric"]
-    dependencies {
-        required.project "fabric-api"
+if (project.hasProperty("modrinth_projectId")) {
+    modrinth {
+        println "🔗 Configuring Modrinth upload..."
+        debugMode = isDebugMode()
+        syncBodyFrom = rootProject.file("README.md").text
+        token = System.getenv("MODRINTH_TOKEN")
+        projectId = project.modrinth_projectId
+        versionNumber = version
+        versionName = "${archives_base_name}-${minecraft_version}+${version}"
+        versionType = project.hasProperty("version_type") ? project.version_type : "release"
+        uploadFile = remapJar
+        gameVersions = ["${resolvedMinecraftVersion}"]
+        loaders = ["fabric"]
+        dependencies {
+            required.project "fabric-api"
+        }
+        changelog = changelogText
     }
-    changelog = changelogText
 }
 
 task updateAuthors {
