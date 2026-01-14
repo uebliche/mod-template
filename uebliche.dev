@@ -29,6 +29,9 @@
   "id": "template/mod-template",
   "kind": "project",
   "loaderSource": "mcmeta",
+  "modrinth": {
+    "projectId": "xMkfPrwZ"
+  },
   "name": "Mod Template",
   "runModes": [
     "client",
