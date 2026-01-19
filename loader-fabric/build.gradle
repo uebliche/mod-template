@@ -95,10 +95,6 @@ base {
     archivesName = project.archives_base_name
 }
 
-def isDebugMode() {
-    return System.getenv("DEBUG")?.toBoolean() ?: false
-}
-
 // -------------------- VERSION HANDLING --------------------
 
 static def parseVersion(String v) {
@@ -229,7 +225,7 @@ sourceSets {
                 property("ARTIFACT", project.name)
                 property("VERSION", project.version.toString())
                 property("MC_VERSION", resolvedMinecraftVersion)
-                property("VERSION_TYPE", project.hasProperty("version_type") ? project.version_type : "dev")
+                property("VERSION_TYPE", "release")
             }
         }
     }
@@ -405,13 +401,13 @@ def changelogText = file('release-notes.md').exists() ? file('release-notes.md')
 if (project.hasProperty("modrinth_projectId")) {
     modrinth {
         println "🔗 Configuring Modrinth upload..."
-        debugMode = isDebugMode()
+        debugMode = false
         syncBodyFrom = rootProject.file("README.md").text
         token = System.getenv("MODRINTH_TOKEN")
         projectId = project.modrinth_projectId
         versionNumber = version
         versionName = "${archives_base_name}-${minecraft_version}+${version}"
-        versionType = project.hasProperty("version_type") ? project.version_type : "release"
+        versionType = "release"
         uploadFile = remapJar
         gameVersions = ["${resolvedMinecraftVersion}"]
         loaders = ["fabric"]
