@@ -13,16 +13,16 @@
   ],
   "gradleArgsByLoader": {
     "fabric": [
-      "-PskipForge=true"
+      "-PskipNeoForge=true"
     ],
-    "forge": [
-      "-PforceForge=true"
+    "neoforge": [
+      "-PforceNeoForge=true"
     ],
     "paper": [
-      "-PskipForge=true"
+      "-PskipNeoForge=true"
     ],
     "velocity": [
-      "-PskipForge=true"
+      "-PskipNeoForge=true"
     ]
   },
   "group": "uebliche/mcmeta",

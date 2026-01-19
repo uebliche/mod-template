@@ -51,7 +51,7 @@ gradle.ext.mcmetaPluginAvailable = mcmetaPluginAvailable
 gradle.ext.mcmetaPluginDir = mcmetaPluginDir
 
 def onlyLoader = gradle.startParameter.projectProperties.get("onlyLoader")?.trim()
-def loaders = ["fabric", "forge", "paper", "velocity"]
+def loaders = ["fabric", "neoforge", "paper", "velocity"]
 if (onlyLoader) {
 	def normalized = onlyLoader.toLowerCase()
 	if (normalized.startsWith("loader-")) {
@@ -62,5 +62,5 @@ if (onlyLoader) {
 	}
 	include("common", "loader-${normalized}")
 } else {
-	include("common", "loader-fabric", "loader-forge", "loader-paper", "loader-velocity")
+	include("common", "loader-fabric", "loader-neoforge", "loader-paper", "loader-velocity")
 }

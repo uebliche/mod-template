@@ -13,7 +13,7 @@ This repository now demonstrates a multi-loader layout:
 mod-template/
 ├── common/           # shared Java-only logic (no loader APIs)
 ├── loader-fabric/    # Fabric/Loom project, applies build.main.gradle
-├── loader-forge/     # NeoForge project powered by ModDevGradle
+├── loader-neoforge/     # NeoForge project powered by ModDevGradle
 ├── loader-paper/     # Paper plugin (Paperweight userdev)
 └── loader-velocity/  # Velocity proxy plugin
 ```
@@ -36,7 +36,7 @@ Clone the repository and invoke the build for a specific loader/version:
 ./gradlew :loader-fabric:build -PmcVersion=1.21.1
 
 # NeoForge 1.21.10
-./gradlew :loader-forge:runClient -PmcVersion=1.21.10
+./gradlew :loader-neoforge:runClient -PmcVersion=1.21.10
 
 # Paper 1.21.1
 ./gradlew :loader-paper:reobfJar -PmcVersion=1.21.1
@@ -64,7 +64,7 @@ When `minecraft_version` is not set, mcmeta uses the latest stable release. The 
 
 - NeoForge builds resolve loader + API versions from mcmeta and Maven metadata based on `-PmcVersion`.
 - The build list is driven by `buildFromVersion` in `gradle.properties` (all newer stable releases).
-- Local dev uses ModDevGradle’s `forgeclientdev` target: `./gradlew :loader-forge:runClient -PmcVersion=<version>` boots with the shared `common` code already on the classpath.
+- Local dev uses ModDevGradle run tasks: `./gradlew :loader-neoforge:runClient -PmcVersion=<version>` boots with the shared `common` code already on the classpath.
 
 ## Updating build.main.gradle
 

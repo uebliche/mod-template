@@ -40,14 +40,22 @@ plugins {
 
 def forgeTaskRequested = gradle.startParameter.taskRequests.any { request ->
     request.args.any { arg ->
-        arg.contains("loader-forge")
+        arg.contains("loader-neoforge")
     }
 }
-def skipForge = project.findProperty("skipForge")?.toString()?.toBoolean() ?: false
-def forceForge = project.findProperty("forceForge")?.toString()?.toBoolean() ?: false
+def skipNeoForge = project.findProperty("skipNeoForge")?.toString()?.toBoolean()
+if (skipNeoForge == null) {
+    skipNeoForge = project.findProperty("skipForge")?.toString()?.toBoolean()
+}
+skipNeoForge = skipNeoForge ?: false
+def forceNeoForge = project.findProperty("forceNeoForge")?.toString()?.toBoolean()
+if (forceNeoForge == null) {
+    forceNeoForge = project.findProperty("forceForge")?.toString()?.toBoolean()
+}
+forceNeoForge = forceNeoForge ?: false
 
-if ((skipForge || !forgeTaskRequested) && !forceForge) {
-    logger.lifecycle("Skipping loader-forge configuration (no loader-forge tasks requested)")
+if ((skipNeoForge || !forgeTaskRequested) && !forceNeoForge) {
+    logger.lifecycle("Skipping loader-neoforge configuration (no loader-neoforge tasks requested)")
     return
 }
 
