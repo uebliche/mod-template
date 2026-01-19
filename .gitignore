@@ -42,3 +42,5 @@ replay_*.log
 /jdlist.txt
 /versions.json
 /build.properties
+
+**/build.properties
