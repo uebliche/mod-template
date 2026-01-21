@@ -1,4 +1,46 @@
 {
+  "actions": [
+    {
+      "args": [
+        "-lc",
+        "IFS=',' read -r -a LOADERS <<< \"{loader}\"; for LOADER in \"${LOADERS[@]}\"; do ./gradlew :loader-${LOADER}:build --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader=${LOADER}; done"
+      ],
+      "command": "bash",
+      "deployTargets": {
+        "defaults": [
+          "s3",
+          "modrinth"
+        ],
+        "options": [
+          "s3",
+          "modrinth"
+        ],
+        "remember": true,
+        "title": "Deploy targets"
+      },
+      "label": "Deploy mod",
+      "targetSelect": {
+        "defaults": [
+          "fabric"
+        ],
+        "key": "loader",
+        "options": [
+          "fabric",
+          "neoforge",
+          "paper",
+          "velocity"
+        ],
+        "remember": true,
+        "separator": ",",
+        "title": "Deploy loaders"
+      },
+      "uploads": [
+        {
+          "path": "loader-*/build/libs/*.jar"
+        }
+      ]
+    }
+  ],
   "defaults": {
     "loader": "fabric",
     "runMode": "client",
