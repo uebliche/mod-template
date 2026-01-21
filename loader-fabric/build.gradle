@@ -11,6 +11,11 @@ buildscript {
             def patch = parts.size() > 2 && parts[2] ? parts[2] as int : 0
             return [major, minor, patch]
         }
+        def override = proj.findProperty("fabricLoomVersionOverride")
+                ?: System.getenv("FABRIC_LOOM_VERSION")
+        if (override != null && override.toString().trim()) {
+            return override.toString().trim()
+        }
         def versions = []
         if (proj.rootProject.ext.has('mcmetaFabricLoomVersions')) {
             def value = proj.rootProject.ext.mcmetaFabricLoomVersions
