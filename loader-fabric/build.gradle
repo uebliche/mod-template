@@ -4,6 +4,13 @@ buildscript {
         attributes.attribute(pluginApiAttr, project.objects.named(org.gradle.api.attributes.plugin.GradlePluginApiVersion, "9.2.0"))
     }
     ext.computeFabricLoomVersion = { Project proj ->
+        def parseVersion = { String value ->
+            def parts = (value ?: "").tokenize('.').collect { it.replaceAll(/[^0-9].*/, '') }
+            def major = parts.size() > 0 && parts[0] ? parts[0] as int : 0
+            def minor = parts.size() > 1 && parts[1] ? parts[1] as int : 0
+            def patch = parts.size() > 2 && parts[2] ? parts[2] as int : 0
+            return [major, minor, patch]
+        }
         def versions = []
         if (proj.rootProject.ext.has('mcmetaFabricLoomVersions')) {
             def value = proj.rootProject.ext.mcmetaFabricLoomVersions
@@ -21,11 +28,25 @@ buildscript {
         if (!versions.isEmpty()) {
             def gradleVersion = org.gradle.util.GradleVersion.current().version
             def gradleMajor = (gradleVersion?.tokenize('.')?.first() ?: "0") as int
+            def compatible = versions
             if (gradleMajor < 9) {
-                candidate = versions.find { !it.startsWith("1.15.") }
+                compatible = versions.findAll { parseVersion(it)[1] < 15 }
+            } else {
+                compatible = versions.findAll { parseVersion(it)[1] >= 15 }
+            }
+            if (!compatible.isEmpty()) {
+                candidate = compatible.sort { a, b ->
+                    def av = parseVersion(a)
+                    def bv = parseVersion(b)
+                    av[0] <=> bv[0] ?: av[1] <=> bv[1] ?: av[2] <=> bv[2]
+                }.last()
             }
             if (!candidate) {
-                candidate = versions[0]
+                candidate = versions.sort { a, b ->
+                    def av = parseVersion(a)
+                    def bv = parseVersion(b)
+                    av[0] <=> bv[0] ?: av[1] <=> bv[1] ?: av[2] <=> bv[2]
+                }.last()
             }
         }
         if (!candidate) {
