@@ -25,9 +25,9 @@ buildscript {
                 ? proj.rootProject.ext.mcmetaFabricLoomSnapshotVersion?.toString()?.trim()
                 : null
         def candidate = null
+        def gradleVersion = org.gradle.util.GradleVersion.current().version
+        def gradleMajor = (gradleVersion?.tokenize('.')?.first() ?: "0") as int
         if (!versions.isEmpty()) {
-            def gradleVersion = org.gradle.util.GradleVersion.current().version
-            def gradleMajor = (gradleVersion?.tokenize('.')?.first() ?: "0") as int
             def compatible = versions
             if (gradleMajor < 9) {
                 compatible = versions.findAll { parseVersion(it)[1] < 15 }
@@ -47,6 +47,23 @@ buildscript {
                     def bv = parseVersion(b)
                     av[0] <=> bv[0] ?: av[1] <=> bv[1] ?: av[2] <=> bv[2]
                 }.last()
+            }
+        }
+        def stableVersion = stable ? parseVersion(stable) : null
+        def snapshotVersion = snapshot ? parseVersion(snapshot) : null
+        def candidateVersion = candidate ? parseVersion(candidate) : null
+        if (gradleMajor >= 9 && candidateVersion && candidateVersion[1] < 15) {
+            if (stableVersion && stableVersion[1] >= 15) {
+                candidate = stable
+            } else if (snapshotVersion && snapshotVersion[1] >= 15) {
+                candidate = snapshot
+            }
+        }
+        if (gradleMajor < 9 && candidateVersion && candidateVersion[1] >= 15) {
+            if (stableVersion && stableVersion[1] < 15) {
+                candidate = stable
+            } else if (snapshotVersion && snapshotVersion[1] < 15) {
+                candidate = snapshot
             }
         }
         if (!candidate) {
