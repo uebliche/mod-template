@@ -44,3 +44,5 @@ replay_*.log
 /build.properties
 
 **/build.properties
+
+.gradle-cache/
