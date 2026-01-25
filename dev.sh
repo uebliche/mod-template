@@ -65,6 +65,8 @@ if not loaders:
     sys.exit("No loaders found in loader-* directories")
 
 loader_map = {name.lower(): name for name in loaders}
+if "neoforge" in loader_map.values():
+    loader_map["forge"] = "neoforge"
 
 def read_choice(prompt, options, display_map=None, default=None):
     input_stream = sys.stdin if sys.stdin.isatty() else None
@@ -129,13 +131,13 @@ elif version not in version_labels:
 
 mode_options_by_loader = {
     "fabric": ["client", "server", "build"],
-    "forge": ["client", "server", "build"],
+    "neoforge": ["client", "server", "build"],
     "paper": ["server", "build"],
     "velocity": ["server", "build"],
 }
 default_modes = {
     "fabric": "client",
-    "forge": "client",
+    "neoforge": "client",
     "paper": "server",
     "velocity": "server",
 }
@@ -150,7 +152,7 @@ if not mode:
 def resolve_task(selected_loader, selected_mode):
     if selected_mode == "build":
         return "build"
-    if selected_loader in ("fabric", "forge"):
+    if selected_loader in ("fabric", "neoforge"):
         return "runClient" if selected_mode == "client" else "runServer"
     if selected_loader == "paper":
         return "runServer"

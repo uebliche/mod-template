@@ -111,6 +111,9 @@ foreach ($loaderName in $availableLoaders) {
 if (-not $Loader -or -not ($availableLoaders -contains $Loader)) {
     $Loader = Read-Choice -Prompt "Pick loader" -Options $availableLoaders -DisplayMap $loaderDisplay
 }
+if ($Loader -eq "forge" -and ($availableLoaders -contains "neoforge")) {
+    $Loader = "neoforge"
+}
 
 $versionLabels = @{}
 foreach ($v in $versions) {
@@ -127,13 +130,13 @@ if (-not $Version) {
 
 $modeOptionsByLoader = @{
     fabric   = @("client","server","build")
-    forge    = @("client","server","build")
+    neoforge = @("client","server","build")
     paper    = @("server","build")
     velocity = @("server","build")
 }
 $defaultModeMap = @{
     fabric   = "client"
-    forge    = "client"
+    neoforge = "client"
     paper    = "server"
     velocity = "server"
 }
@@ -154,7 +157,7 @@ if ($Mode) {
 function Resolve-Task {
     param([string]$Loader, [string]$Mode)
     if ($Mode -eq "build") { return "build" }
-    if ($Loader -eq "fabric" -or $Loader -eq "forge") {
+    if ($Loader -eq "fabric" -or $Loader -eq "neoforge") {
         return ($Mode -eq "client" ? "runClient" : "runServer")
     }
     if ($Loader -eq "paper") { return "runServer" }
