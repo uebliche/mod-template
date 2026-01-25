@@ -57,6 +57,9 @@ if (onlyLoader) {
 	if (normalized.startsWith("loader-")) {
 		normalized = normalized.substring("loader-".length())
 	}
+	if (normalized == "forge") {
+		normalized = "neoforge"
+	}
 	if (!loaders.contains(normalized)) {
 		throw new GradleException("Unknown onlyLoader '${onlyLoader}'. Expected one of: ${loaders}")
 	}
