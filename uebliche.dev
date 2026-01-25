@@ -3,9 +3,13 @@
     {
       "args": [
         "-lc",
-        "IFS=',' read -r -a LOADERS <<< \"{loader}\"; for LOADER in \"${LOADERS[@]}\"; do ./gradlew :loader-${LOADER}:build --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader=${LOADER}; done"
+        "IFS=',' read -r -a LOADERS <<< \"{loader}\"; for LOADER in \"${LOADERS[@]}\"; do ./gradlew :loader-${LOADER}:build --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader=${LOADER}; mkdir -p release/${LOADER}; for JAR in loader-${LOADER}/build/libs/*.jar; do case \"$JAR\" in *-sources.jar|*sources.jar|*-dev.jar|*dev.jar) continue;; esac; cp -v \"$JAR\" release/${LOADER}/; done; done"
       ],
       "command": "bash",
+      "data": {
+        "CLEAN_RELEASE_DIR": "1",
+        "CLEAN_RELEASE_DIR_AFTER": "1"
+      },
       "deployTargets": {
         "defaults": [
           "s3",
@@ -36,7 +40,7 @@
       },
       "uploads": [
         {
-          "path": "loader-*/build/libs/*.jar"
+          "path": "release/**"
         }
       ]
     }
@@ -70,6 +74,7 @@
   "group": "uebliche/mcmeta",
   "id": "template/mod-template",
   "kind": "project",
+  "changelogPath": "../../docs/mod-template/changelog.md",
   "loaderSource": "mcmeta",
   "modrinth": {
     "projectId": "xMkfPrwZ"
