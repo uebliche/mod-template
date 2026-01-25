@@ -64,6 +64,12 @@ if (onlyLoader) {
 		throw new GradleException("Unknown onlyLoader '${onlyLoader}'. Expected one of: ${loaders}")
 	}
 	include("common", "loader-${normalized}")
+	if (normalized == "neoforge") {
+		include("loader-forge")
+		project(":loader-forge").projectDir = file("loader-neoforge")
+	}
 } else {
 	include("common", "loader-fabric", "loader-neoforge", "loader-paper", "loader-velocity")
+	include("loader-forge")
+	project(":loader-forge").projectDir = file("loader-neoforge")
 }
