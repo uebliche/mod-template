@@ -39,7 +39,7 @@ plugins {
 
 def forgeTaskRequested = gradle.startParameter.taskRequests.any { request ->
     request.args.any { arg ->
-        arg.contains("loader-neoforge")
+        arg.contains("loader-neoforge") || arg.contains("loader-forge")
     }
 }
 def skipNeoForge = project.findProperty("skipNeoForge")?.toString()?.toBoolean()
