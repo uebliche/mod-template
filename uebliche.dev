@@ -1,6 +1,19 @@
 {
   "actions": [
     {
+      "label": "Run",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "docker compose -f compose.dev.yml up --build"
+      ],
+      "env": {
+        "HOST_PORT": "{HOST_PORT}",
+        "DOCKBRIDGE_AUTOREGISTER": "{DOCKBRIDGE_AUTOREGISTER}",
+        "DOCKBRIDGE_AUTOJOIN": "{DOCKBRIDGE_AUTOJOIN}"
+      }
+    },
+    {
       "args": [
         "-lc",
         "IFS=',' read -r -a LOADERS <<< \"{loader}\"; for LOADER in \"${LOADERS[@]}\"; do ./gradlew :loader-${LOADER}:build --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader=${LOADER}; mkdir -p release/${LOADER}; for JAR in loader-${LOADER}/build/libs/*.jar; do case \"$JAR\" in *-sources.jar|*sources.jar|*-dev.jar|*dev.jar) continue;; esac; cp -v \"$JAR\" release/${LOADER}/; done; done"
@@ -47,8 +60,8 @@
   ],
   "defaults": {
     "loader": "fabric",
-    "runMode": "client",
-    "version": "1.21.11"
+    "version": "1.21.11",
+    "runMode": "client"
   },
   "gradleArgs": [
     "--build-cache",
@@ -71,11 +84,11 @@
       "-PskipNeoForge=true"
     ]
   },
-  "group": "uebliche/mcmeta",
+  "group": "uebliche/public",
   "id": "template/mod-template",
   "kind": "project",
   "changelogPath": "../../docs/mod-template/changelog.md",
-  "loaderSource": "mcmeta",
+  "loaderSource": "matrix",
   "modrinth": {
     "projectId": "xMkfPrwZ"
   },
@@ -93,5 +106,30 @@
     "runClient": "runClient",
     "runServer": "runServer",
     "template": ":loader-{loader}:{task}"
-  }
+  },
+  "vars": [
+    {
+      "key": "HOST_PORT",
+      "label": "Docker host port (0 = auto)",
+      "default": "0"
+    },
+    {
+      "key": "DOCKBRIDGE_AUTOREGISTER",
+      "label": "DockBridge autoregister",
+      "default": "1",
+      "options": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "key": "DOCKBRIDGE_AUTOJOIN",
+      "label": "DockBridge autojoin",
+      "default": "0",
+      "options": [
+        "0",
+        "1"
+      ]
+    }
+  ]
 }
