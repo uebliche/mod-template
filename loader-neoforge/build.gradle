@@ -247,3 +247,5 @@ tasks.withType(ProcessResources).configureEach {
         expand(expandedProperties)
     }
 }
+
+apply from: rootProject.file("../../gradle/mod-devkit-local.gradle")

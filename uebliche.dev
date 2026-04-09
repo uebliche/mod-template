@@ -25,11 +25,11 @@
       },
       "deployTargets": {
         "defaults": [
-          "s3",
+          "uebliche.net",
           "modrinth"
         ],
         "options": [
-          "s3",
+          "uebliche.net",
           "modrinth"
         ],
         "remember": true,
@@ -55,6 +55,22 @@
         {
           "path": "release/**"
         }
+      ]
+    },
+    {
+      "label": "devClientWithDevKit",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "./gradlew :loader-{loader}:runClientDev --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader={loader}"
+      ]
+    },
+    {
+      "label": "profileClientWithDevKit",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "./gradlew :loader-{loader}:runClientProfile --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader={loader}"
       ]
     }
   ],
@@ -105,7 +121,9 @@
     "build": "build",
     "runClient": "runClient",
     "runServer": "runServer",
-    "template": ":loader-{loader}:{task}"
+    "template": ":loader-{loader}:{task}",
+    "runClientDev": "runClientDev",
+    "runClientProfile": "runClientProfile"
   },
   "vars": [
     {
