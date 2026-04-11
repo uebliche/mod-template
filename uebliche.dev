@@ -149,5 +149,9 @@
         "1"
       ]
     }
-  ]
+  ],
+  "ueblicheNet": {
+    "type": "extension",
+    "id": "mod-template"
+  }
 }

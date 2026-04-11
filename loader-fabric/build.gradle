@@ -245,7 +245,7 @@ ext.fabric_version = resolved.api
 dependencies {
     annotationProcessor libs.manifold // Manifold annotation processor
     minecraft "com.mojang:minecraft:${resolvedMinecraftVersion}" // Minecraft main dependency
-    mappings loom.officialMojangMappings() // Official Mojang mappings
+    (project.ext.has("mcmetaFabricSupport") ? project.ext.mcmetaFabricSupport : project.rootProject.ext.mcmetaFabricSupport).applyMappings(project, delegate) // Official Mojang mappings
     modImplementation "net.fabricmc:fabric-loader:${loader_version}" // Fabric loader
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}" // Fabric API
 
