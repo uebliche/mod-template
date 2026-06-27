@@ -50,7 +50,7 @@ jobs:
           DATE=$(date +'%Y.%m.%d')
           TAGS=$(git tag --list "${DATE}*")
           echo "Existing tags: $TAGS"
-          
+
           if [ -z "$TAGS" ]; then
           VERSION="$DATE"
           else
@@ -62,12 +62,12 @@ jobs:
           fi
           VERSION="${DATE}${NEXT_SUFFIX}"
           fi
-          
+
           BRANCH="${GITHUB_REF##*/}"
           if [ "$BRANCH" != "main" ]; then
           VERSION="${VERSION}-${BRANCH}"
           fi
-          
+
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git tag "$VERSION"
@@ -193,6 +193,11 @@ jobs:
     name: Build ${{ matrix.loader }} ${{ matrix.mcVersion }}
     steps:
       - uses: actions/checkout@v6
+      - name: Checkout mcmeta
+        uses: actions/checkout@v6
+        with:
+          repository: uebliche/mcmeta
+          path: .mcmeta
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -210,6 +215,7 @@ jobs:
           VERSION_TYPE: ${{ github.event.inputs.version_type }}
           DEBUG_FLAG: ${{ github.event.inputs.debug }}
           EXTRA_ARGS: ${{ join(matrix.args, ' ') }}
+          MCMETA_PLUGIN_PATH: ${{ github.workspace }}/.mcmeta/gradle-plugin
         run: |
           set -euo pipefail
           if [ "$LOADER" = "fabric" ]; then
@@ -235,13 +241,20 @@ jobs:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
           GITHUB_SHA: ${{ github.sha }}
           CHANGELOG: ${{ needs.release.outputs.notes }}
+          MCMETA_PLUGIN_PATH: ${{ github.workspace }}/.mcmeta/gradle-plugin
         run: |
-          ./gradlew :loader-fabric:modrinth -PmcVersion=${{ matrix.mcVersion }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }} ${{ join(matrix.args, ' ') }}
+          ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" :loader-fabric:modrinth -PmcVersion=${{ matrix.mcVersion }} -Ptag=${{ needs.release.outputs.TAG }} -Pversion_type=${{ github.event.inputs.version_type }} -Pdebug=${{ github.event.inputs.debug }} ${{ join(matrix.args, ' ') }}
 
   update-description:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Checkout mcmeta
+        uses: actions/checkout@v6
+        with:
+          repository: uebliche/mcmeta
+          path: .mcmeta
 
       - name: Set up Java
         uses: actions/setup-java@v5
@@ -255,4 +268,5 @@ jobs:
       - name: Update Description
         env:
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
-        run: ./gradlew modrinthSyncBody -Pdebug=${{ github.event.inputs.debug }}
+          MCMETA_PLUGIN_PATH: ${{ github.workspace }}/.mcmeta/gradle-plugin
+        run: ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" modrinthSyncBody -Pdebug=${{ github.event.inputs.debug }}

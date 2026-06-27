@@ -81,6 +81,11 @@ jobs:
     name: Test ${{ matrix.loader }} ${{ matrix.mcVersion }}
     steps:
       - uses: actions/checkout@v6
+      - name: Checkout mcmeta
+        uses: actions/checkout@v6
+        with:
+          repository: uebliche/mcmeta
+          path: .mcmeta
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
@@ -89,5 +94,7 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
       - name: Test Build
+        env:
+          MCMETA_PLUGIN_PATH: ${{ github.workspace }}/.mcmeta/gradle-plugin
         run: |
           ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" :loader-${{ matrix.loader }}:build -PmcVersion=${{ matrix.mcVersion }} ${{ join(matrix.args, ' ') }}
