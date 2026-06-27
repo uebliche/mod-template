@@ -139,7 +139,8 @@ jobs:
           def version_at_least(ver: str, minimum: str):
               return parse_version(ver) >= parse_version(minimum)
 
-          data = json.loads(pathlib.Path("versions.matrix.json").read_text())
+          matrix_path = pathlib.Path("versions.matrix.json")
+          data = json.loads(matrix_path.read_text()) if matrix_path.exists() else {}
           matrix = []
 
           fabric_versions = []
