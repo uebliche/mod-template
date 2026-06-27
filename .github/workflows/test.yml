@@ -31,7 +31,7 @@ jobs:
               return parts
 
           def version_at_least(ver: str, minimum: str):
-              return parse_version(ver) >= parse_version(minimum)
+              return ver.startswith("1.") and parse_version(ver) >= parse_version(minimum)
 
           matrix_path = pathlib.Path("versions.matrix.json")
           data = json.loads(matrix_path.read_text()) if matrix_path.exists() else {}
@@ -90,4 +90,4 @@ jobs:
         run: chmod +x ./gradlew
       - name: Test Build
         run: |
-          ./gradlew :loader-${{ matrix.loader }}:build -PmcVersion=${{ matrix.mcVersion }} ${{ join(matrix.args, ' ') }}
+          ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" :loader-${{ matrix.loader }}:build -PmcVersion=${{ matrix.mcVersion }} ${{ join(matrix.args, ' ') }}

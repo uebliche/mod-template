@@ -137,7 +137,7 @@ jobs:
               return parts
 
           def version_at_least(ver: str, minimum: str):
-              return parse_version(ver) >= parse_version(minimum)
+              return ver.startswith("1.") and parse_version(ver) >= parse_version(minimum)
 
           matrix_path = pathlib.Path("versions.matrix.json")
           data = json.loads(matrix_path.read_text()) if matrix_path.exists() else {}
@@ -217,7 +217,7 @@ jobs:
           else
               TASKS=":loader-${LOADER}:build"
           fi
-          ./gradlew $TASKS -PmcVersion=$MC_VERSION -Ptag=$TAG -Pversion_type=$VERSION_TYPE -Pdebug=$DEBUG_FLAG $EXTRA_ARGS
+          ./gradlew -Dorg.gradle.java.home="$JAVA_HOME" $TASKS -PmcVersion=$MC_VERSION -Ptag=$TAG -Pversion_type=$VERSION_TYPE -Pdebug=$DEBUG_FLAG $EXTRA_ARGS
 
       - name: Upload jars to release
         uses: softprops/action-gh-release@v2
