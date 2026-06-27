@@ -248,4 +248,7 @@ tasks.withType(ProcessResources).configureEach {
     }
 }
 
-apply from: rootProject.file("../../gradle/mod-devkit-local.gradle")
+def modDevkitLocal = rootProject.file("../../gradle/mod-devkit-local.gradle")
+if (modDevkitLocal.exists()) {
+    apply from: modDevkitLocal
+}

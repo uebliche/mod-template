@@ -462,4 +462,7 @@ dependencies {
     implementation project(':common')
 }
 
-apply from: rootProject.file("../../gradle/mod-devkit-local.gradle")
+def modDevkitLocal = rootProject.file("../../gradle/mod-devkit-local.gradle")
+if (modDevkitLocal.exists()) {
+    apply from: modDevkitLocal
+}
