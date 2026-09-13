@@ -76,7 +76,7 @@
   ],
   "defaults": {
     "loader": "fabric",
-    "version": "1.21.11",
+    "version": "26.2",
     "runMode": "client"
   },
   "gradleArgs": [
@@ -153,5 +153,12 @@
   "ueblicheNet": {
     "type": "extension",
     "id": "mod-template"
-  }
+  },
+  "versionRange": {
+    "min": "26.2",
+    "max": "26.2"
+  },
+  "includeSnapshots": false,
+  "useRecommendedVersions": false,
+  "additionalVersions": []
 }
