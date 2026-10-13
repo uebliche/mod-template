@@ -90,3 +90,6 @@ subprojects {
         }
     }
 }
+
+// Ship own and third-party license terms with every archive.
+apply from: rootProject.file("gradle/public-license.gradle")

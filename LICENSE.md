@@ -1,15 +1,20 @@
-Copyright (c) 2025 Frederik Heinrich
+# All Rights Reserved
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the “Software”), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, and distribute the Software, subject to
-the following conditions:
+Copyright (c) 2024-2026 Frederik Heinrich.
 
-1. **Non-Commercial Use Only**
-   The Software may not be sold, licensed, or otherwise used for commercial purposes without explicit prior written permission from the author.
+All rights reserved.
 
-2. **No Warranty**
-   THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+The Uebliche-owned code, artwork, and documentation in this distribution are
+proprietary. No permission to copy, modify, sublicense, sell, or redistribute
+them is granted by their public availability. These activities require prior
+written permission from the copyright holder, except as permitted by applicable
+law or a separate written agreement.
+
+Third-party components are excluded from these terms. They remain governed by
+their respective licenses, copyright notices, and attribution requirements.
+Their complete license texts are supplied separately with the distribution.
+
+This notice does not revoke rights previously granted for earlier releases or
+for third-party material, including material previously dedicated under CC0.
+
+For permissions or inquiries, contact mail@FrederikHeinrich.de.

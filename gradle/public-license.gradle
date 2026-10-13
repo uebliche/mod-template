@@ -1,0 +1,157 @@
+import groovy.json.JsonOutput
+import java.security.MessageDigest
+import java.util.zip.ZipFile
+import org.gradle.api.tasks.bundling.Jar
+import org.gradle.api.file.DuplicatesStrategy
+
+// Applied by each public product root, including products without mod-root.
+def productRoot = rootProject
+def ownLicense = productRoot.file('LICENSE.md')
+def manualTerms = productRoot.file('third-party/licenses')
+def sharedTerms = productRoot.file('../../template/third-party-licenses')
+def noticeFiles = productRoot.files('THIRD-PARTY-NOTICES.md', 'THIRD_PARTY_NOTICES.md')
+        .filter { it.exists() }
+def legalEntry = { String name ->
+    def leaf = name.tokenize('/').last()?.toLowerCase(Locale.ROOT) ?: ''
+    leaf ==~ /(?:licen[cs]e|copying|copyright|notice|authors)(?:[._-].*)?/ ||
+            name.tokenize('/').dropRight(1).any { it.toLowerCase(Locale.ROOT) in ['licenses', 'licences'] }
+}
+def fullTermsEntry = { String name ->
+    def parts = name.tokenize('/')
+    def leaf = parts.last()?.toLowerCase(Locale.ROOT) ?: ''
+    leaf ==~ /(?:licen[cs]e|copying)(?:[._-].*)?/ ||
+            parts.dropRight(1).any { it.toLowerCase(Locale.ROOT) in ['licenses', 'licences'] }
+}
+def safeName = { String value -> value.replaceAll('[^A-Za-z0-9._-]', '_') }
+
+allprojects { target ->
+    def registerBundle = { String taskName, String outputName, boolean applicationRuntime, shadowArchive ->
+    def generatedTerms = target.layout.buildDirectory.dir(outputName)
+    def bundle = target.tasks.register(taskName) {
+        group = 'distribution'
+        description = 'Collect complete third-party terms for bundled dependencies.'
+        inputs.file(ownLicense)
+        inputs.files(noticeFiles)
+        if (manualTerms.exists()) inputs.dir(manualTerms)
+        if (sharedTerms.exists()) inputs.dir(sharedTerms)
+        // Dependency configurations are finalized lazily by loader plugins.
+        def bundledConfigurations = target.providers.provider {
+            def names = ['shade', 'include', 'jarJar', 'reconnectRuntime', 'permissionsRuntime'] as Set
+            if (applicationRuntime) names.add('runtimeClasspath')
+            def buildText = target.buildFile.exists() ? target.buildFile.getText('UTF-8') : ''
+            // Resolve only configurations actually expanded into archives, not
+            // compile-only inputs used by tools such as ProGuard.
+            def expanded = buildText =~ /configurations\.([A-Za-z][A-Za-z0-9_]*)\.(?:collect|collectMany)\s*\{[^}]*\bzipTree\s*\(/
+            expanded.each { names.add(it[1]) }
+            def directTrees = buildText =~ /zipTree\s*\(\s*configurations\.([A-Za-z][A-Za-z0-9_]*)/
+            directTrees.each { names.add(it[1]) }
+            def configs = new LinkedHashSet()
+            names.each { name ->
+                def config = target.configurations.findByName(name)
+                if (config != null && config.canBeResolved) configs.add(config)
+            }
+            // Default ShadowJar embeds runtimeClasspath unless configured otherwise.
+            if (shadowArchive != null) {
+                def embedded = shadowArchive.configurations instanceof org.gradle.api.provider.Provider
+                        ? shadowArchive.configurations.get() : shadowArchive.configurations
+                embedded.each { config ->
+                    if (config.canBeResolved) configs.add(config)
+                }
+            }
+            configs
+        }
+        dependsOn(bundledConfigurations)
+        def bundledFiles = bundledConfigurations.map { configs ->
+            configs.collectMany { it.files as List }.unique().findAll { it.name.endsWith('.jar') }
+        }
+        inputs.files(bundledFiles)
+        outputs.dir(generatedTerms)
+        doLast {
+            if (!ownLicense.isFile()) throw new GradleException("Missing product license: ${ownLicense}")
+            def output = generatedTerms.get().asFile
+            if (output.canonicalFile.parentFile != target.layout.buildDirectory.get().asFile.canonicalFile) {
+                throw new GradleException('License output must stay inside this project build directory')
+            }
+            // Only this task's generated directory is replaced; runtime data is untouched.
+            target.delete(output)
+            output.mkdirs()
+            def index = []
+            def missing = []
+            bundledFiles.get().sort { it.name }.each { artifact ->
+                def hash = MessageDigest.getInstance('SHA-256').digest(artifact.bytes).encodeHex().toString()
+                def identity = safeName(artifact.name.replaceFirst(/\.jar$/, '')) + '-' + hash.substring(0, 12)
+                def entries = []
+                new ZipFile(artifact).withCloseable { zip ->
+                    zip.entries().each { entry ->
+                        if (entry.directory || !legalEntry(entry.name)) return
+                        def destination = new File(output, "third-party/licenses/dependencies/${identity}/${entry.name}")
+                        if (!destination.canonicalPath.startsWith(output.canonicalPath + File.separator)) {
+                            throw new GradleException("Unsafe license entry in ${artifact.name}")
+                        }
+                        destination.parentFile.mkdirs()
+                        zip.getInputStream(entry).withCloseable { source -> destination.bytes = source.bytes }
+                        entries.add(entry.name)
+                    }
+                }
+                // Own project JARs have the product license; external JARs must carry terms
+                // or have a complete, versioned manual fallback supplied by the product.
+                def fallback = new File(manualTerms, "artifacts/${artifact.name}")
+                if (!fallback.isDirectory()) fallback = new File(sharedTerms, "artifacts/${artifact.name}")
+                if (!entries.any { fullTermsEntry(it) }) {
+                    if (fallback.isDirectory() && target.fileTree(fallback).files.any {
+                        fullTermsEntry(fallback.toPath().relativize(it.toPath()).toString().replace('\\', '/'))
+                    }) {
+                        target.copy { from fallback; into new File(output, "third-party/licenses/dependencies/${identity}") }
+                        entries.add('manual-fallback')
+                    } else {
+                        missing.add(artifact.name)
+                    }
+                }
+                index.add([artifact: artifact.name, sha256: hash, terms: entries.sort()])
+            }
+            if (!missing.isEmpty()) {
+                throw new GradleException('Missing complete bundled dependency license texts: ' + missing.join(', ')
+                        + '. Supply versioned texts under third-party/licenses/artifacts/<jar filename>/ before distributing.')
+            }
+            def indexFile = new File(output, 'third-party/dependency-licenses.json')
+            indexFile.parentFile.mkdirs()
+            indexFile.text = JsonOutput.prettyPrint(JsonOutput.toJson(index)) + '\n'
+        }
+    }
+    return [task: bundle, directory: generatedTerms]
+    }
+    def basic = registerBundle('preparePublicLicenseBundle', 'public-license-bundle', false, null)
+    target.tasks.withType(Jar).all { archive ->
+        def selected = archive.class.simpleName.contains('ShadowJar')
+                ? registerBundle('prepare' + archive.name.capitalize() + 'PublicLicenseBundle',
+                        'public-license-bundle-' + safeName(archive.name), false, archive)
+                : basic
+        dependsOn(selected.task)
+        from(ownLicense) { into 'META-INF/uebliche'; rename { 'LICENSE.md' } }
+        from(noticeFiles) { into 'META-INF/uebliche' }
+        from(productRoot.file('third-party/license-sources.json')) { into 'META-INF/uebliche/third-party' }
+        from(manualTerms) { into 'META-INF/uebliche/third-party/licenses' }
+        from(selected.directory) { into 'META-INF/uebliche' }
+        // Shaded libraries often share root LICENSE/NOTICE names. The full,
+        // collision-free copies above remain authoritative for every dependency.
+        eachFile { entry ->
+            if (legalEntry(entry.path)) entry.duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        }
+        manifest.attributes('Uebliche-License': 'LicenseRef-All-Rights-Reserved')
+    }
+    target.plugins.withId('application') {
+        def applicationBundle = registerBundle('preparePublicApplicationLicenseBundle',
+                'public-application-license-bundle', true, null)
+        target.distributions.named('main').configure { distribution ->
+            distribution.contents {
+                from(ownLicense) { into 'legal/uebliche'; rename { 'LICENSE.md' } }
+                from(noticeFiles) { into 'legal/uebliche' }
+                from(manualTerms) { into 'legal/uebliche/third-party/licenses' }
+                from(applicationBundle.directory) { into 'legal/uebliche' }
+            }
+        }
+        target.tasks.matching { it.name in ['installDist', 'distZip', 'distTar'] }.configureEach {
+            dependsOn(applicationBundle.task)
+        }
+    }
+}

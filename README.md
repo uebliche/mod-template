@@ -95,3 +95,8 @@ Please discuss major changes in an issue first to ensure they align with the pro
 ## Examples
 
 Replace this section with screenshots or usage examples if available.
+
+## License
+
+All rights reserved for Uebliche-owned code and assets. Third-party components
+retain their own licenses. Earlier releases retain their original license terms.

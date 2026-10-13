@@ -418,7 +418,7 @@ java {
 
 jar {
     inputs.property "archivesName", project.base.archivesName
-    from("LICENSE.md") { rename { "${it}_${inputs.properties.archivesName}" } }
+    from(rootProject.file("LICENSE.md")) { rename { "${it}_${inputs.properties.archivesName}" } }
 }
 
 publishing {

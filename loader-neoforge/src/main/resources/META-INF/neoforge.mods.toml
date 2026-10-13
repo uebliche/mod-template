@@ -1,6 +1,6 @@
 modLoader="javafml"
 loaderVersion="${neoforgeVersionRange}"
-license="NC-MIT"
+license="LicenseRef-All-Rights-Reserved"
 issueTrackerURL="https://github.com/uebliche/mod-template/issues"
 
 [[mods]]

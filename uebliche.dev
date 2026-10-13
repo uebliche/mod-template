@@ -72,6 +72,36 @@
         "-lc",
         "./gradlew :loader-{loader}:runClientProfile --build-cache --parallel -PmcVersion={mcVersion} -Ploader_cache_file={loader_cache_file} -PonlyLoader={loader}"
       ]
+    },
+    {
+      "label": "Validate public license packaging",
+      "command": "gradlew.bat",
+      "args": [
+        ":loader-{loader}:build",
+        "--build-cache",
+        "--no-daemon",
+        "--max-workers=2",
+        "-PmcVersion={mcVersion}",
+        "-PonlyLoader={loader}"
+      ],
+      "cores": 2,
+      "s3Select": false,
+      "uploads": [],
+      "env": {
+        "UEBLICHE_DEV_JAVA_MAJOR": "25"
+      },
+      "targetSelect": {
+        "key": "loader",
+        "options": [
+          "fabric",
+          "neoforge"
+        ],
+        "defaults": [
+          "fabric",
+          "neoforge"
+        ],
+        "separator": ","
+      }
     }
   ],
   "defaults": {
