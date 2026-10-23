@@ -102,6 +102,49 @@
         ],
         "separator": ","
       }
+    },
+    {
+      "label": "Validate build: Validate public license packaging",
+      "command": "gradlew.bat",
+      "args": [
+        ":loader-{loader}:build",
+        "--build-cache",
+        "--no-daemon",
+        "-PmcVersion={mcVersion}",
+        "-PonlyLoader={loader}",
+        "--init-script",
+        "{root}/gradle/ci-repository-mirrors.init.gradle",
+        "--init-script",
+        "{root}/gradle/isolated-public-validation.init.gradle",
+        "-PueblichePublicValidationRoot={root}/.uebliche/cache/public-loader-validation/slot-{validationSlot}",
+        "-PueblicheFabricMavenUrl=https://maven2.fabricmc.net",
+        "-PmcVersion={mcVersion}",
+        "--no-daemon",
+        "--max-workers=1",
+        "-Dorg.gradle.parallel=false",
+        "-Dorg.gradle.jvmargs=-Xmx2048m"
+      ],
+      "cores": 2,
+      "s3Select": false,
+      "env": {
+        "UEBLICHE_DEV_JAVA_MAJOR": "25",
+        "UEBLICHE_DEV_MAVEN_CACHE_DISABLED": "1",
+        "UEBLICHE_FABRIC_MAVEN_URL": "https://maven2.fabricmc.net",
+        "UEBLICHE_PUBLIC_VALIDATION_ROOT": "{root}/.uebliche/cache/public-loader-validation/slot-{validationSlot}",
+        "_JAVA_OPTIONS": "-Xms128m -Xmx4096m -XX:ActiveProcessorCount=2"
+      },
+      "targetSelect": {
+        "key": "loader",
+        "options": [
+          "fabric",
+          "neoforge"
+        ],
+        "defaults": [
+          "fabric",
+          "neoforge"
+        ],
+        "separator": ","
+      }
     }
   ],
   "defaults": {
